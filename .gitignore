@@ -1,0 +1,46 @@
+# Python caches and build outputs
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments and local settings
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Test/runtime scratch outputs
+tests/.tmp/
+
+# Large or reproducible data artifacts
+data/public/**/*.binetflow
+results/cache/
+results/scored/
+
+# Keep the curated/report artifacts, but avoid noisy ad-hoc local experiment exports by default.
+results/tables/*
+!results/tables/README.md
+!results/tables/report_ready/
+!results/tables/report_ready/**
+!results/tables/final_story/
+!results/tables/final_story/**
+
+results/figures/*
+!results/figures/final_story/
+!results/figures/final_story/**
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

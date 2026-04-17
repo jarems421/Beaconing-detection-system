@@ -1,0 +1,8 @@
+finding_order,story_stage,finding,evidence_artifact,interpretation
+1,Synthetic benchmark evaluation,Synthetic RF is strongest on the controlled synthetic benchmark.,headline_detector_comparison.csv,Flow-level behavioural features work well in controlled settings.
+2,Interpretable baseline,The rule baseline remains the strongest interpretable reference.,headline_detector_comparison.csv,Rules are valuable for explanation even when RF is stronger overall.
+3,Minimum-evidence analysis,Minimum evidence is the core research result.,minimum_evidence_story_table.csv,Detector reliability depends sharply on available flow history.
+4,Hardest evasive regime,Low-event high-jitter size-overlapping time_size_jittered remains hardest.,minimum_evidence_story_table.csv,Aggregate flow features lose separability when evidence is sparse.
+5,Synthetic direct transfer to CTU,CTU direct transfer exposes schema and domain shift.,ctu_three_stage_comparison.csv,Synthetic benchmark success does not imply public-data transfer.
+6,CTU-native unsupervised evaluation,"CTU-native modelling is more honest, but still not deployment proof.",ctu_three_stage_comparison.csv,Native fields reduce schema mismatch but do not solve CTU validation.
+7,Project conclusion,"The project is a comparative study, not a production SOC detector.",docs/report_draft.md,"The contribution is comparison, stress testing, and failure analysis."

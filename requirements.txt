@@ -1,0 +1,6 @@
+# Core scientific Python dependencies expected for later stages.
+numpy
+pandas
+scikit-learn
+matplotlib
+
