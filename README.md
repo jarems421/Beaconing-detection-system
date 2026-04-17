@@ -34,6 +34,18 @@ results/tables/final_story/
 results/figures/final_story/
 ```
 
+## Demo Walkthrough
+
+For a quick interview or portfolio walkthrough, use:
+
+```text
+docs/demo_script.md
+```
+
+The demo is intentionally lightweight: it walks through the README figures, the minimum-evidence
+finding, the CTU domain-shift result, and one local scorer command. It is not a separate dashboard
+or production monitoring interface.
+
 ## Key Results
 
 The strongest project finding is the minimum-evidence result: easy beaconing regimes can be
