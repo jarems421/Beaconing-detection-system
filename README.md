@@ -34,17 +34,17 @@ results/tables/final_story/
 results/figures/final_story/
 ```
 
-## Demo Walkthrough
+## Project Walkthrough
 
-For a quick interview or portfolio walkthrough, use:
+For a compact reader-facing tour of the project, use:
 
 ```text
-docs/demo_script.md
+docs/project_walkthrough.md
 ```
 
-The demo is intentionally lightweight: it walks through the README figures, the minimum-evidence
-finding, the CTU domain-shift result, and one local scorer command. It is not a separate dashboard
-or production monitoring interface.
+The walkthrough connects the README figures, the minimum-evidence finding, the CTU domain-shift
+result, and one local scorer command. It is not a separate dashboard or production monitoring
+interface.
 
 ## Key Results
 
