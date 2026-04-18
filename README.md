@@ -6,7 +6,7 @@ burst traffic, hard benign profiles, and CTU-13 public-data domain shift.
 **Headline result:** controlled synthetic detection can look strong, but minimum evidence requirements
 and CTU-13 schema/domain shift sharply limit naive generalisation.
 
-## If You Only Read One Minute
+## At A Glance
 
 | Question | Short answer |
 | --- | --- |
