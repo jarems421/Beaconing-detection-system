@@ -23,6 +23,32 @@ This document is a structured skeleton for turning the beaconing detection proje
 - Compared interpretable rules, statistical scoring, anomaly detection, and supervised ML on the same feature representation.
 - Identified a minimum-evidence limitation for low-event evasive beaconing.
 
+### System Architecture Diagram
+
+Use this simple architecture diagram near the start of the report to show the end-to-end research pipeline:
+
+```mermaid
+flowchart LR
+    A[Synthetic generator / CTU-13 public data] --> B[Flow construction]
+    B --> C[Behavioural feature extraction]
+    C --> D[Detector families]
+    D --> E[Evaluation tracks]
+    E --> F[Report-ready tables and figures]
+
+    D --> D1[Rules]
+    D --> D2[Statistical scoring]
+    D --> D3[Anomaly detection]
+    D --> D4[Supervised ML]
+
+    E --> E1[Synthetic hardened grid]
+    E --> E2[Stress and minimum-evidence studies]
+    E --> E3[CTU-13 validation]
+```
+
+Key point to explain:
+
+- The same flow and feature pipeline supports multiple detector families, making the comparisons easier to interpret.
+
 ## 2. Research Question
 
 ### Primary Research Question
@@ -138,6 +164,18 @@ src_ip, dst_ip, dst_port, protocol
 - Structural size features such as dominant size-bin fraction and normalized size range.
 
 ## 6. Detector Progression
+
+### Compact Detector Tradeoff Table
+
+Use this table before the detailed detector subsections to make the model comparison easy to scan:
+
+| Detector family | Role in project | Main strength | Main limitation |
+| --- | --- | --- | --- |
+| Frozen rules | Interpretable reference baseline | Easy to inspect and explain | Brittle under evasive timing and benign repeated traffic |
+| Statistical z-score | Transparent statistical baseline | Simple benign-reference comparison | Weak under multimodal benign behaviour |
+| Isolation Forest / LOF | Anomaly baselines | Useful unsupervised comparison point | Not strongest overall; can be unstable at low evidence |
+| Logistic Regression | Linear supervised baseline | Clear supervised reference | Less flexible than Random Forest |
+| Random Forest | Strongest synthetic benchmark model | Best controlled synthetic performance | Lower interpretability and still weak on hardest low-evidence regimes |
 
 ### Rule Baseline
 
