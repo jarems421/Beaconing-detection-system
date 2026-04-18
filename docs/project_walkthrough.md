@@ -24,37 +24,10 @@ The implemented pipeline is:
 synthetic/public data -> flows -> behavioural features -> detectors -> evaluations -> exports
 ```
 
-The same broad feature pipeline supports several detector families:
+The same broad feature pipeline supports rules, statistical scoring, anomaly detection, and
+supervised ML. That shared representation makes detector comparisons easier to interpret.
 
-- frozen rule baseline
-- statistical z-score baseline
-- Isolation Forest
-- Local Outlier Factor
-- Logistic Regression
-- Random Forest
-
-This makes the detector comparison easier to interpret because the models are evaluated over a
-shared behavioural representation.
-
-## 3. Synthetic Benchmark Result
-
-The controlled synthetic benchmark tests fixed periodic, jittered, bursty, and time+size jittered
-beaconing alongside harder benign profiles.
-
-Headline figure:
-
-```text
-results/figures/final_story/01_synthetic_detector_comparison.png
-```
-
-Main takeaway:
-
-```text
-Random Forest is the strongest overall detector on the controlled synthetic benchmark. The frozen
-rule baseline remains the main interpretable reference.
-```
-
-## 4. Core Finding: Minimum Evidence
+## 3. Core Finding: Minimum Evidence
 
 The central research result is the minimum-evidence finding.
 
@@ -73,8 +46,26 @@ flow-level features become reliable.
 ```
 
 This matters because the hardest missed flows are not merely near a bad threshold. In the hardest
-time+size jittered regime, the available flow history is too thin for the aggregate features to
-separate malicious and benign behaviour reliably.
+time+size jittered regime, the available flow history is too thin for aggregate features to separate
+malicious and benign behaviour reliably.
+
+## 4. Synthetic Benchmark Result
+
+The controlled synthetic benchmark tests fixed periodic, jittered, bursty, and time+size jittered
+beaconing alongside harder benign profiles.
+
+Headline figure:
+
+```text
+results/figures/final_story/01_synthetic_detector_comparison.png
+```
+
+Main takeaway:
+
+```text
+Random Forest is the strongest overall detector on the controlled synthetic benchmark. The frozen
+rule baseline remains the main interpretable reference.
+```
 
 ## 5. CTU-13 Public-Data Reality Check
 
@@ -99,8 +90,8 @@ Synthetic direct transfer exposes schema and domain shift. CTU-native features a
 public-data path, but the CTU results are still not deployment proof.
 ```
 
-The three-stage split is important. It avoids blurring synthetic-trained transfer results with
-CTU-native modelling, and it keeps ambiguous public-data limitations visible.
+The three-stage split avoids blurring synthetic-trained transfer results with CTU-native modelling,
+and it keeps ambiguous public-data limitations visible.
 
 ## 6. Runnable Local Interface
 
@@ -122,7 +113,20 @@ python -m beacon_detector.cli.score --input data/public/ctu13/scenario_7/capture
 The scorer is intentionally local and research-oriented. It is not a dashboard, live packet monitor,
 or production alerting system.
 
-## 7. Final Conclusion
+## 7. Suggested Short Walkthrough Path
+
+A concise project tour can follow this sequence:
+
+1. Research question.
+2. Minimum-evidence figure.
+3. Synthetic detector comparison.
+4. CTU three-stage comparison.
+5. `python -m beacon_detector.cli.score --help`.
+6. Final conclusion.
+
+Recommended length for a short recording: two to three minutes.
+
+## 8. Final Conclusion
 
 Synthetic benchmark results are strong, especially for Random Forest, but the most important
 research finding is the minimum-evidence result: easy beaconing regimes can be detected with little
@@ -131,16 +135,3 @@ more evidence. CTU-13 validation exposes schema and domain shift that synthetic 
 hide. CTU-native modelling is a more honest public-data path than forcing CTU bidirectional rows
 through synthetic-style features, but it is still not deployment proof. This project is a
 comparative flow-level detection study, not a production SOC detector.
-
-## Suggested Short Demo Flow
-
-For a concise project tour, use this sequence:
-
-1. Read the research question.
-2. Show the synthetic detector comparison.
-3. Show the minimum-evidence figure.
-4. Show the CTU three-stage comparison.
-5. Run `python -m beacon_detector.cli.score --help`.
-6. Close with the final conclusion.
-
-Recommended length for a short recording: two to three minutes.
