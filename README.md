@@ -3,8 +3,8 @@
 Flow-level behavioural detection of command-and-control beaconing under timing jitter, size variation,
 burst traffic, hard benign profiles, and CTU-13 public-data domain shift.
 
-**Headline result:** controlled synthetic detection can look strong, but minimum evidence requirements
-and CTU-13 schema/domain shift sharply limit naive generalisation.
+**Headline result:** strong controlled synthetic performance does not automatically transfer to
+public flow data. Minimum evidence requirements and CTU-13 schema/domain shift are the key limits.
 
 ## At A Glance
 
@@ -17,15 +17,15 @@ and CTU-13 schema/domain shift sharply limit naive generalisation.
 | CTU takeaway | Public CTU-13 validation exposes schema/domain shift that synthetic results alone would hide. |
 | Final claim | This is a comparative flow-level detection study, not a production SOC detector. |
 
-## Why This Matters
+## Motivation
 
 Beaconing can look periodic, but real benign traffic and evasive attacker behaviour make simple
 periodicity checks unreliable. Attackers can add timing jitter, vary payload sizes, communicate in
 bursts, or keep flows short enough that there is not much evidence to learn from. This project studies
-where flow-level behavioural detection works, where it breaks, and what changes when the same ideas
-are tested against CTU-13 public flow data.
+where flow-level behavioural detection works, where it breaks, and how results change when the same
+ideas are tested against CTU-13 public flow data.
 
-## What This Project Shows
+## Key Findings
 
 - Flow-level behavioural features can detect fixed, jittered, and bursty synthetic beaconing well.
 - Hard benign repeated traffic and shortcut/overlap stress expose false positives and brittle assumptions.
@@ -70,9 +70,9 @@ rule baseline remains the main interpretable reference.
 
 ![Synthetic detector comparison](results/figures/final_story/01_synthetic_detector_comparison.png)
 
-The public-data validation story is more cautious. CTU-13 exposes schema and domain shift:
+The public-data validation result is more cautious. CTU-13 exposes schema and domain shift:
 synthetic-transfer RF can detect many botnet-labelled flows but false-positives heavily, while
-CTU-native approaches are more honest but still limited.
+CTU-native approaches are better aligned with the public data schema but still limited.
 
 ![CTU three-stage comparison](results/figures/final_story/03_ctu_three_stage_comparison.png)
 
@@ -86,7 +86,7 @@ CTU-native approaches are more honest but still limited.
 | Logistic Regression | Linear supervised baseline | Clear supervised reference | Less flexible than Random Forest |
 | Random Forest | Strongest synthetic benchmark model | Best controlled synthetic performance | Lower interpretability and still weak on hardest low-evidence regimes |
 
-## Public-Data Story
+## Public-Data Validation
 
 CTU-13 evidence is deliberately split into three stages:
 
@@ -97,7 +97,7 @@ Within-CTU supervised evaluation
 ```
 
 This separation matters. Synthetic direct transfer exposes domain shift, CTU-native unsupervised
-evaluation uses `.binetflow` fields more honestly, and within-CTU supervised evaluation tests whether
+evaluation uses `.binetflow` fields directly, and within-CTU supervised evaluation tests whether
 those native features have discriminative power under scenario-aware splits.
 
 ## Repo Guide
@@ -106,7 +106,7 @@ those native features have discriminative power under scenario-aware splits.
 | --- | --- |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
-| `docs/project_walkthrough.md` | Quick guided project tour. |
+| `docs/project_walkthrough.md` | Guided project walkthrough. |
 | `docs/report_draft.md` | More complete technical writeup. |
 | `results/figures/final_story/` | Headline figures to view first. |
 | `results/tables/final_story/` | Curated summary tables for the final story. |
@@ -122,9 +122,8 @@ For a compact reader-facing tour of the project, use:
 docs/project_walkthrough.md
 ```
 
-The walkthrough connects the README figures, the minimum-evidence finding, the CTU domain-shift
-result, and one local scorer command. It is not a separate dashboard or production monitoring
-interface.
+The walkthrough connects the README figures, the minimum-evidence result, the CTU domain-shift
+result, and one local scorer command. It is not a dashboard or production monitoring interface.
 
 ## Setup
 
@@ -196,19 +195,12 @@ python -m beacon_detector.cli.score --input data/public/ctu13/scenario_7/capture
 - Flow-level aggregate features have evidence limits for evasive low-event traffic.
 - The local scorer is a research interface, not a production SOC detector.
 
-## What I Learned
-
-- Good synthetic performance can hide realism and transfer problems.
-- Minimum evidence matters more than headline accuracy for evasive beaconing.
-- Public-data transfer is harder than within-distribution benchmarking.
-- Interpretable baselines remain useful even when they are not top performers.
-
 ## Final Conclusion
 
 Synthetic benchmark results are strong, especially for Random Forest, but the most important
 research finding is the minimum-evidence result: easy beaconing regimes can be detected with little
 flow history, while evasive low-event, high-jitter, size-overlapping regimes require substantially
 more evidence. CTU-13 validation exposes schema and domain shift that synthetic results alone would
-hide. CTU-native modelling is a more honest public-data path than forcing CTU bidirectional rows
-through synthetic-style features, but it is still not deployment proof. This project is a
+hide. CTU-native modelling is a better public-data path than forcing CTU bidirectional rows through
+synthetic-style features, but it is still not deployment proof. This project is a
 comparative flow-level detection study, not a production SOC detector.
