@@ -13,7 +13,7 @@ features can go when the detector does not inspect payloads.
 
 The project should not be read as a production monitoring system. Its value is the research process:
 controlled synthetic generation, common feature extraction, detector comparison, stress testing,
-public-data transfer checks, and honest limitation analysis.
+public-data transfer checks, and explicit limitation analysis.
 
 ## Research Question
 
@@ -105,7 +105,7 @@ baseline is also strong and remains important because it gives an interpretable 
 statistical baseline and anomaly baselines provide useful comparison points, but neither becomes the
 lead model.
 
-Shortcut stress and held-out validation are where the story becomes more interesting. They show that
+Shortcut stress and held-out validation make the result more useful. They show that
 strong synthetic benchmark performance does not mean the detector has solved beaconing generally.
 The hardest failure remains low-event, high-jitter, size-overlapping `time_size_jittered` traffic.
 In that regime, Random Forest can confidently score malicious flows as benign.
@@ -132,7 +132,7 @@ configuration issue.
 
 ## CTU-13 Public-Data Validation
 
-The CTU story is deliberately split into three stages:
+The CTU evaluation is deliberately split into three stages:
 
 ```text
 Synthetic direct transfer to CTU
@@ -145,15 +145,16 @@ to adapted CTU rows. It exposes domain shift: synthetic-trained RF finds many bo
 but false positives are high.
 
 CTU-native unsupervised evaluation uses `.binetflow` fields directly rather than forcing CTU rows
-through synthetic-style flow features. This is more honest, but still not a full solution.
+through synthetic-style flow features. This is better aligned with the public data schema, but still
+not a full solution.
 
 Within-CTU supervised evaluation trains Logistic Regression and Random Forest on CTU-native fields
 with scenario-aware splits. It tests whether the native representation has discriminative power when
 trained appropriately on public data. Results are mixed: CTU-native RF reduces false positives but
 misses many botnet flows, while CTU-native Logistic Regression recalls more but overfires.
 
-This is a stronger public-data story than pretending synthetic transfer works perfectly. It is also
-more honest: CTU-13 validation shows real schema and domain-shift limits.
+This gives a stronger public-data evaluation than pretending synthetic transfer works perfectly:
+CTU-13 validation shows real schema and domain-shift limits.
 
 ## Lightweight Detector Interface
 
@@ -173,9 +174,9 @@ inspectable, but it is not a live detector, dashboard, or SOC platform.
 - Supervised models may learn generator-specific shortcuts.
 - Low-event evasive `time_size_jittered` remains difficult.
 - CTU-13 labels include ambiguous Background traffic, handled separately as sensitivity analysis.
-- CTU-native modelling improves honesty of the public-data path but does not prove deployment
-  readiness.
+- CTU-native modelling improves schema alignment for the public-data path but does not prove
+  deployment readiness.
 
 ## Conclusion
 
-Synthetic benchmark results are strong, especially for Random Forest, but the most important research finding is the minimum-evidence result: easy beaconing regimes can be detected with little flow history, while evasive low-event, high-jitter, size-overlapping regimes require substantially more evidence. CTU-13 validation exposes schema and domain shift that synthetic results alone would hide. CTU-native modelling is a more honest public-data path than forcing CTU bidirectional rows through synthetic-style features, but it is still not deployment proof. This project is a comparative flow-level detection study, not a production SOC detector.
+Synthetic benchmark results are strong, especially for Random Forest, but the most important research finding is the minimum-evidence result: easy beaconing regimes can be detected with little flow history, while evasive low-event, high-jitter, size-overlapping regimes require substantially more evidence. CTU-13 validation exposes schema and domain shift that synthetic results alone would hide. CTU-native modelling is a better aligned public-data path than forcing CTU bidirectional rows through synthetic-style features, but it is still not deployment proof. This project is a comparative flow-level detection study, not a production SOC detector.

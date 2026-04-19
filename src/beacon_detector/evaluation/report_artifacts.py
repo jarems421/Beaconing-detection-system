@@ -384,11 +384,11 @@ def _write_final_project_findings_table(report_ready_dir: Path, generated_at: st
             "generated_at": generated_at,
         },
         {
-            "finding_id": "ctu_native_more_honest",
+            "finding_id": "ctu_native_schema_aligned",
             "story_stage": "CTU-native unsupervised evaluation",
             "finding": (
-                "CTU-native features are a more honest public-data path than "
-                "forcing CTU rows through synthetic-style features."
+                "CTU-native features are better aligned with CTU public flow "
+                "fields than synthetic-style features."
             ),
             "interpretation": (
                 "Native public-data modelling reduces schema mismatch but does "
@@ -405,7 +405,7 @@ def _write_final_project_findings_table(report_ready_dir: Path, generated_at: st
             ),
             "interpretation": (
                 "The value is the experimental pipeline, comparisons, stress tests, "
-                "and honest failure analysis."
+                "and documented failure analysis."
             ),
             "generated_at": generated_at,
         },
@@ -1019,7 +1019,10 @@ def _write_final_findings_table(final_table_dir: Path) -> Path:
         {
             "finding_order": 6,
             "story_stage": "CTU-native unsupervised evaluation",
-            "finding": "CTU-native modelling is more honest, but still not deployment proof.",
+            "finding": (
+                "CTU-native modelling is better aligned with CTU data, "
+                "but still not deployment proof."
+            ),
             "evidence_artifact": "ctu_three_stage_comparison.csv",
             "interpretation": (
                 "Native fields reduce schema mismatch but do not solve CTU validation."
@@ -1293,7 +1296,7 @@ def _write_final_research_story_summary_figure(final_figure_dir: Path) -> Path:
         ("Stress tests\nexpose limits", "Hard benign +\nshortcut overlap"),
         ("Minimum evidence\nfinding", "Evasive flows need\nmore history"),
         ("CTU domain\nshift", "Synthetic transfer\nfalse-positives"),
-        ("CTU-native\npath", "More honest,\nstill limited"),
+        ("CTU-native\npath", "Better aligned,\nstill limited"),
     ]
     for index, (title, subtitle) in enumerate(steps):
         x = 0.05 + index * 0.19

@@ -4,5 +4,5 @@ finding_order,story_stage,finding,evidence_artifact,interpretation
 3,Minimum-evidence analysis,Minimum evidence is the core research result.,minimum_evidence_story_table.csv,Detector reliability depends sharply on available flow history.
 4,Hardest evasive regime,Low-event high-jitter size-overlapping time_size_jittered remains hardest.,minimum_evidence_story_table.csv,Aggregate flow features lose separability when evidence is sparse.
 5,Synthetic direct transfer to CTU,CTU direct transfer exposes schema and domain shift.,ctu_three_stage_comparison.csv,Synthetic benchmark success does not imply public-data transfer.
-6,CTU-native unsupervised evaluation,"CTU-native modelling is more honest, but still not deployment proof.",ctu_three_stage_comparison.csv,Native fields reduce schema mismatch but do not solve CTU validation.
+6,CTU-native unsupervised evaluation,"CTU-native modelling is better aligned with CTU data, but still not deployment proof.",ctu_three_stage_comparison.csv,Native fields reduce schema mismatch but do not solve CTU validation.
 7,Project conclusion,"The project is a comparative study, not a production SOC detector.",docs/report_draft.md,"The contribution is comparison, stress testing, and failure analysis."

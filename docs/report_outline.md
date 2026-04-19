@@ -271,11 +271,11 @@ Use this table before the detailed detector subsections to make the model compar
 
 ### CTU-13 Public Validation
 
-- Keep the CTU story explicitly split into `Synthetic direct transfer to CTU`, `CTU-native unsupervised evaluation`, and `Within-CTU supervised evaluation`.
+- Keep the CTU evaluation explicitly split into `Synthetic direct transfer to CTU`, `CTU-native unsupervised evaluation`, and `Within-CTU supervised evaluation`.
 - Direct synthetic transfer exposes schema/domain shift and high false positives.
-- CTU-native features use `.binetflow` fields directly and are a more honest public-data representation.
+- CTU-native features use `.binetflow` fields directly and better match the public-data schema.
 - Within-CTU supervised evaluation tests CTU-native feature discriminative power with scenario-aware splits.
-- These results strengthen the public-data story without making a production deployment claim.
+- These results strengthen the public-data evaluation without making a production deployment claim.
 
 ### Minimum-Evidence Findings
 

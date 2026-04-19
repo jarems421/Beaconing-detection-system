@@ -1,8 +1,8 @@
 # Project Walkthrough
 
 This walkthrough gives a short, reader-facing tour of the project. It is not a dashboard, live
-monitoring interface, or production SOC workflow. It is a compact guide to the research story,
-evidence, and runnable entrypoints.
+monitoring interface, or production SOC workflow. It is a compact guide to the evidence,
+main findings, and runnable entrypoints.
 
 ## 1. Research Question
 
@@ -86,8 +86,8 @@ results/figures/final_story/03_ctu_three_stage_comparison.png
 Main takeaway:
 
 ```text
-Synthetic direct transfer exposes schema and domain shift. CTU-native features are a more honest
-public-data path, but the CTU results are still not deployment proof.
+Synthetic direct transfer exposes schema and domain shift. CTU-native features are better aligned
+with the public flow schema, but the CTU results are still not deployment proof.
 ```
 
 The three-stage split avoids blurring synthetic-trained transfer results with CTU-native modelling,
@@ -132,6 +132,6 @@ Synthetic benchmark results are strong, especially for Random Forest, but the mo
 research finding is the minimum-evidence result: easy beaconing regimes can be detected with little
 flow history, while evasive low-event, high-jitter, size-overlapping regimes require substantially
 more evidence. CTU-13 validation exposes schema and domain shift that synthetic results alone would
-hide. CTU-native modelling is a more honest public-data path than forcing CTU bidirectional rows
+hide. CTU-native modelling is a better aligned public-data path than forcing CTU bidirectional rows
 through synthetic-style features, but it is still not deployment proof. This project is a
 comparative flow-level detection study, not a production SOC detector.

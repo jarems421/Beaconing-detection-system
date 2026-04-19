@@ -14,8 +14,8 @@ This document summarizes the final project findings. Detailed narrative lives in
 4. Minimum evidence is the central research finding: easy regimes need little history, while evasive
    low-event time-and-size jittered regimes need much more.
 5. CTU-13 exposes schema and domain shift; synthetic transfer alone is not enough.
-6. CTU-native modelling is more honest than forcing CTU through synthetic features, but it is still
-   not deployment proof.
+6. CTU-native modelling is better aligned with CTU flow fields than synthetic-style features, but it
+   is still not deployment proof.
 
 ## CTU Story Labels
 
@@ -36,7 +36,7 @@ These stages answer different questions and should not be collapsed into one sco
 
 ## Final Conclusion
 
-Synthetic benchmark results are strong, especially for Random Forest, but the most important research finding is the minimum-evidence result: easy beaconing regimes can be detected with little flow history, while evasive low-event, high-jitter, size-overlapping regimes require substantially more evidence. CTU-13 validation exposes schema and domain shift that synthetic results alone would hide. CTU-native modelling is a more honest public-data path than forcing CTU bidirectional rows through synthetic-style features, but it is still not deployment proof. This project is a comparative flow-level detection study, not a production SOC detector.
+Synthetic benchmark results are strong, especially for Random Forest, but the most important research finding is the minimum-evidence result: easy beaconing regimes can be detected with little flow history, while evasive low-event, high-jitter, size-overlapping regimes require substantially more evidence. CTU-13 validation exposes schema and domain shift that synthetic results alone would hide. CTU-native modelling is a better aligned public-data path than forcing CTU bidirectional rows through synthetic-style features, but it is still not deployment proof. This project is a comparative flow-level detection study, not a production SOC detector.
 
 ## Remaining Limitations
 
