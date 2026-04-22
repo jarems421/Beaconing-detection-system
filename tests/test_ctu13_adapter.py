@@ -181,6 +181,28 @@ class Ctu13AdapterTests(unittest.TestCase):
         combined_metrics = result.conservative_result.detector_results[0].metrics
         self.assertEqual(combined_metrics.confusion_matrix.true_positive, 2)
 
+    def test_multi_scenario_evaluation_combines_per_scenario_operating_points(self) -> None:
+        scenarios = [
+            Ctu13ScenarioInput(Path("scenario_a.binetflow"), "ctu13_a"),
+            Ctu13ScenarioInput(Path("scenario_b.binetflow"), "ctu13_b"),
+        ]
+
+        with patch(
+            "beacon_detector.evaluation.ctu13.run_ctu13_evaluation",
+            side_effect=_fake_ctu13_evaluation_with_scenario_threshold,
+        ):
+            result = run_ctu13_multi_scenario_evaluation(
+                scenarios=scenarios,
+                output_dir="unused",
+                include_background_sensitivity=False,
+            )
+
+        self.assertEqual(len(result.conservative_result.detector_results), 1)
+        detector_result = result.conservative_result.detector_results[0]
+        self.assertEqual(detector_result.detector_name, "fake_detector")
+        self.assertIn("per_scenario_calibrated", detector_result.operating_point)
+        self.assertEqual(len(detector_result.records), 4)
+
     def test_multi_scenario_exports_include_label_policy_sensitivity(self) -> None:
         scenarios = [Ctu13ScenarioInput(Path("scenario_a.binetflow"), "ctu13_a")]
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -332,13 +354,30 @@ def _write_binetflow_rows(path: Path, rows: list[dict[str, str]]) -> None:
 
 
 def _fake_ctu13_evaluation(config: Ctu13EvaluationConfig, **_) -> Ctu13EvaluationResult:
+    return _fake_ctu13_evaluation_result(config, operating_point="fake")
+
+
+def _fake_ctu13_evaluation_with_scenario_threshold(
+    config: Ctu13EvaluationConfig, **_
+) -> Ctu13EvaluationResult:
+    return _fake_ctu13_evaluation_result(
+        config,
+        operating_point=f"threshold={config.scenario_name}",
+    )
+
+
+def _fake_ctu13_evaluation_result(
+    config: Ctu13EvaluationConfig,
+    *,
+    operating_point: str,
+) -> Ctu13EvaluationResult:
     records = [
         _prediction_record(config.scenario_name, "beacon", "beacon", 0.9),
         _prediction_record(config.scenario_name, "benign", "beacon", 0.7),
     ]
     detector_result = Ctu13DetectorEvaluation(
         detector_name="fake_detector",
-        operating_point="fake",
+        operating_point=operating_point,
         metrics=calculate_classification_metrics(
             [record.true_label for record in records],
             [record.predicted_label for record in records],

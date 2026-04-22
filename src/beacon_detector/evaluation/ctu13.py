@@ -277,14 +277,16 @@ def _run_ctu13_policy_evaluation(
 def _combine_detector_results(
     scenario_results: list[Ctu13EvaluationResult],
 ) -> list[Ctu13DetectorEvaluation]:
-    grouped_records: dict[tuple[str, str], list[Ctu13PredictionRecord]] = {}
+    grouped_records: dict[str, list[Ctu13PredictionRecord]] = {}
+    operating_points: dict[str, set[str]] = {}
     for scenario_result in scenario_results:
         for detector_result in scenario_result.detector_results:
-            key = (detector_result.detector_name, detector_result.operating_point)
-            grouped_records.setdefault(key, []).extend(detector_result.records)
+            detector_name = detector_result.detector_name
+            grouped_records.setdefault(detector_name, []).extend(detector_result.records)
+            operating_points.setdefault(detector_name, set()).add(detector_result.operating_point)
 
     combined_results: list[Ctu13DetectorEvaluation] = []
-    for (detector_name, operating_point), records in grouped_records.items():
+    for detector_name, records in grouped_records.items():
         metrics = calculate_classification_metrics(
             [record.true_label for record in records],
             [record.predicted_label for record in records],
@@ -292,12 +294,18 @@ def _combine_detector_results(
         combined_results.append(
             Ctu13DetectorEvaluation(
                 detector_name=detector_name,
-                operating_point=operating_point,
+                operating_point=_combined_operating_point(operating_points[detector_name]),
                 metrics=metrics,
                 records=tuple(records),
             )
         )
     return combined_results
+
+
+def _combined_operating_point(operating_points: set[str]) -> str:
+    if len(operating_points) == 1:
+        return next(iter(operating_points))
+    return "per_scenario_calibrated;" + ";".join(sorted(operating_points))
 
 
 def _evaluate_rule_baseline(feature_rows: list[FlowFeatures]) -> Ctu13DetectorEvaluation:

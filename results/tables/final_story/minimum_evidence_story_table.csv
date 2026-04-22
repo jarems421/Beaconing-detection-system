@@ -1,21 +1,21 @@
 scenario_family,detector_label,operating_point,reliability_target,first_reliable_event_count,interpretation,source_file,generated_at
-bursty,LOF,default_lof,0.8,18,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-fixed_periodic,LOF,default_lof,0.8,15,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-hard_time_size_jittered_overlap,LOF,default_lof,0.8,15,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-jittered,LOF,default_lof,0.8,12,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-time_size_jittered,LOF,default_lof,0.8,15,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-bursty,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-fixed_periodic,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-hard_time_size_jittered_overlap,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,12,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-jittered,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-time_size_jittered,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,12,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-bursty,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-fixed_periodic,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-hard_time_size_jittered_overlap,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,18,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-jittered,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-time_size_jittered,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,24,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-bursty,Rule,threshold=2.2,0.8,5,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-fixed_periodic,Rule,threshold=2.2,0.8,5,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-hard_time_size_jittered_overlap,Rule,threshold=2.2,0.8,12,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-jittered,Rule,threshold=2.2,0.8,5,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
-time_size_jittered,Rule,threshold=2.2,0.8,15,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T00:19:34.122229+00:00
+bursty,LOF,default_lof,0.8,15,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+fixed_periodic,LOF,default_lof,0.8,15,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+hard_time_size_jittered_overlap,LOF,default_lof,0.8,15,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+jittered,LOF,default_lof,0.8,15,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+time_size_jittered,LOF,default_lof,0.8,15,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+bursty,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+fixed_periodic,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+hard_time_size_jittered_overlap,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,12,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+jittered,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+time_size_jittered,Synthetic RF @ 0.3,threshold=0.3;features=full,0.8,12,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+bursty,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+fixed_periodic,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+hard_time_size_jittered_overlap,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,18,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+jittered,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,3,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+time_size_jittered,Synthetic RF @ 0.6,threshold=0.6;features=full,0.8,24,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+bursty,Rule,threshold=2.2,0.8,5,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+fixed_periodic,Rule,threshold=2.2,0.8,5,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+hard_time_size_jittered_overlap,Rule,threshold=2.2,0.8,12,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+jittered,Rule,threshold=2.2,0.8,5,easy_regime_low_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
+time_size_jittered,Rule,threshold=2.2,0.8,15,evasive_regime_more_history,results/tables/report_ready/minimum_evidence_threshold_table.csv,2026-04-22T19:46:39.227754+00:00
