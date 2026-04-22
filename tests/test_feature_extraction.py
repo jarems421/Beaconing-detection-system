@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -18,16 +18,16 @@ from beacon_detector.features import (
     calculate_adjacent_similarity_fraction,
     calculate_dominant_interval_fraction,
     calculate_interarrival_times,
-    calculate_near_median_fraction,
     calculate_longest_similar_run,
     calculate_median_absolute_percentage_deviation,
+    calculate_near_median_fraction,
     calculate_range_median_ratio,
     calculate_trimmed_cv,
     detect_bursts,
     extract_features_from_flow,
     extract_features_from_flows,
 )
-from beacon_detector.flows import Flow, load_flows_from_csv
+from beacon_detector.flows import Flow, build_flows, load_flows_from_csv
 
 
 class TestFeatureExtraction(unittest.TestCase):
@@ -160,6 +160,18 @@ class TestFeatureExtraction(unittest.TestCase):
         self.assertAlmostEqual(features.within_burst_gap_consistency or 0.0, 2.0 / 3.0)
         self.assertAlmostEqual(features.burst_to_idle_ratio or 0.0, 4.0 / 30.0)
 
+    def test_rejects_mixed_label_flows_by_default(self) -> None:
+        start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        flow = build_flows(
+            [
+                _event(start, label="benign"),
+                _event(start + timedelta(seconds=5), label="beacon"),
+            ]
+        )[0]
+
+        with self.assertRaises(ValueError):
+            extract_features_from_flow(flow)
+
     def test_extracts_features_from_sample_csv_derived_flows(self) -> None:
         config = SyntheticTrafficConfig(
             start_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -182,7 +194,11 @@ class TestFeatureExtraction(unittest.TestCase):
         self.assertTrue(any(row.label == "benign" for row in feature_rows))
 
 
-def _event(timestamp: datetime, size_bytes: int = 100) -> TrafficEvent:
+def _event(
+    timestamp: datetime,
+    size_bytes: int = 100,
+    label: str = "beacon",
+) -> TrafficEvent:
     return TrafficEvent(
         timestamp=timestamp,
         src_ip="10.0.0.5",
@@ -190,7 +206,7 @@ def _event(timestamp: datetime, size_bytes: int = 100) -> TrafficEvent:
         dst_port=443,
         protocol="tcp",
         size_bytes=size_bytes,
-        label="beacon",
+        label=label,  # type: ignore[arg-type]
         scenario_name="fixed_periodic",
     )
 

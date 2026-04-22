@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -25,6 +26,7 @@ class AnomalyDetectorConfig:
     feature_names: tuple[str, ...] = DEFAULT_ANOMALY_FEATURES
     missing_value: float = 0.0
     contamination: float = 0.03
+    calibration_fraction: float = 0.25
     isolation_forest_estimators: int = 200
     random_state: int = 42
     lof_neighbors: int = 20
@@ -40,6 +42,7 @@ class AnomalyDetectorModel:
     estimator: Any
     prediction_threshold: float
     reference_flow_count: int
+    calibration_flow_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,14 +83,24 @@ def fit_anomaly_detector(
     config: AnomalyDetectorConfig | None = None,
 ) -> AnomalyDetectorModel:
     config = config or AnomalyDetectorConfig()
-    reference_rows = [row for row in feature_rows if row.label == "benign"]
-    if len(reference_rows) < 2:
+    benign_rows = [row for row in feature_rows if row.label == "benign"]
+    if len(benign_rows) < 2:
         raise ValueError("At least two benign reference flows are required.")
+    reference_rows, calibration_rows = _split_reference_and_calibration_rows(
+        benign_rows,
+        calibration_fraction=config.calibration_fraction,
+    )
+    if len(reference_rows) < 2:
+        reference_rows, calibration_rows = benign_rows, benign_rows
 
     scaler = StandardScaler()
     reference_matrix = _feature_matrix(reference_rows, config)
     scaled_reference = scaler.fit_transform(reference_matrix)
     estimator = _fit_estimator(detector_type, scaled_reference, config)
+    scaled_calibration = scaler.transform(_feature_matrix(calibration_rows, config))
+    calibration_scores = [
+        -float(score) for score in estimator.decision_function(scaled_calibration)
+    ]
 
     return AnomalyDetectorModel(
         detector_name=_detector_name(detector_type),
@@ -95,8 +108,9 @@ def fit_anomaly_detector(
         config=config,
         scaler=scaler,
         estimator=estimator,
-        prediction_threshold=0.0,
+        prediction_threshold=_quantile(calibration_scores, 1.0 - config.contamination),
         reference_flow_count=len(reference_rows),
+        calibration_flow_count=len(calibration_rows),
     )
 
 
@@ -121,7 +135,12 @@ def detect_flow_feature_rows_anomaly(
     anomaly_scores = [-float(score) for score in model.estimator.decision_function(scaled)]
 
     results: list[AnomalyDetectionResult] = []
-    for features, score, scaled_values in zip(feature_rows, anomaly_scores, scaled):
+    for features, score, scaled_values in zip(
+        feature_rows,
+        anomaly_scores,
+        scaled,
+        strict=True,
+    ):
         predicted_label: PredictedLabel = (
             "beacon" if score >= model.prediction_threshold else "benign"
         )
@@ -198,13 +217,43 @@ def _feature_value(
     return float(value)
 
 
+def _split_reference_and_calibration_rows(
+    rows: list[FlowFeatures],
+    *,
+    calibration_fraction: float,
+) -> tuple[list[FlowFeatures], list[FlowFeatures]]:
+    if not 0 < calibration_fraction < 1:
+        raise ValueError("calibration_fraction must be between 0 and 1.")
+    ordered = sorted(rows, key=_stable_feature_row_key)
+    reference_count = max(2, int(round(len(ordered) * (1.0 - calibration_fraction))))
+    reference_count = min(reference_count, len(ordered) - 1)
+    return ordered[:reference_count], ordered[reference_count:]
+
+
+def _stable_feature_row_key(row: FlowFeatures) -> str:
+    key = row.flow_key
+    identity = "|".join(
+        (
+            key.src_ip,
+            key.src_port or "",
+            key.direction or "",
+            key.dst_ip,
+            str(key.dst_port),
+            key.protocol,
+            row.scenario_name or "",
+            row.label,
+        )
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
 def _top_standardized_feature_deviations(
     features: FlowFeatures,
     scaled_values,
     model: AnomalyDetectorModel,
 ) -> tuple[AnomalyContribution, ...]:
     contributions: list[AnomalyContribution] = []
-    for feature_name, z_score in zip(model.config.feature_names, scaled_values):
+    for feature_name, z_score in zip(model.config.feature_names, scaled_values, strict=True):
         feature_value = _feature_value(
             features,
             feature_name,
@@ -236,3 +285,13 @@ def _detector_name(detector_type: AnomalyDetectorType) -> str:
     if detector_type == "local_outlier_factor":
         return LOCAL_OUTLIER_FACTOR_NAME
     raise ValueError(f"Unsupported anomaly detector type: {detector_type}")
+
+
+def _quantile(values: list[float], quantile: float) -> float:
+    if not 0 <= quantile <= 1:
+        raise ValueError("quantile must be in the range [0, 1].")
+    if not values:
+        raise ValueError("Cannot calculate a quantile from an empty list.")
+    ordered = sorted(values)
+    index = int(round((len(ordered) - 1) * quantile))
+    return ordered[index]

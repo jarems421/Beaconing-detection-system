@@ -20,6 +20,8 @@ class TrafficEvent:
     size_bytes: int
     label: TrafficLabel
     scenario_name: str = "unknown"
+    src_port: str | None = None
+    direction: str | None = None
 
     @staticmethod
     def from_iso_timestamp(
@@ -32,6 +34,8 @@ class TrafficEvent:
         size_bytes: int,
         label: TrafficLabel,
         scenario_name: str = "unknown",
+        src_port: str | None = None,
+        direction: str | None = None,
     ) -> "TrafficEvent":
         parsed = datetime.fromisoformat(timestamp)
         if parsed.tzinfo is None:
@@ -45,6 +49,8 @@ class TrafficEvent:
             size_bytes=size_bytes,
             label=label,
             scenario_name=scenario_name,
+            src_port=src_port,
+            direction=direction,
         )
 
 

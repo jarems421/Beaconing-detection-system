@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from dataclasses import replace
-from pathlib import Path
 import sys
 import unittest
+from dataclasses import replace
+from datetime import datetime, timezone
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -14,8 +14,8 @@ from beacon_detector.data import (
     generate_synthetic_events,
 )
 from beacon_detector.detection import (
-    AnomalyDetectorModel,
     AnomalyDetectorConfig,
+    AnomalyDetectorModel,
     detect_flow_feature_rows_anomaly,
     fit_anomaly_detector,
     score_flow_features_anomaly,
@@ -36,7 +36,12 @@ class TestAnomalyDetector(unittest.TestCase):
         score, contributions = score_flow_features_anomaly(reference_features[0], model)
 
         self.assertEqual(model.detector_name, "isolation_forest_v1")
-        self.assertEqual(model.reference_flow_count, len(reference_features))
+        self.assertLess(model.reference_flow_count, len(reference_features))
+        self.assertGreater(model.calibration_flow_count, 0)
+        self.assertEqual(
+            model.reference_flow_count + model.calibration_flow_count,
+            len(reference_features),
+        )
         self.assertIsInstance(score, float)
         self.assertGreater(len(contributions), 0)
 
@@ -52,6 +57,7 @@ class TestAnomalyDetector(unittest.TestCase):
         results = detect_flow_feature_rows_anomaly(fixed_features, model=model)
 
         self.assertEqual(model.detector_name, "local_outlier_factor_v1")
+        self.assertGreater(model.calibration_flow_count, 0)
         self.assertGreater(len(results), 0)
         self.assertTrue(
             all(result.predicted_label in {"benign", "beacon"} for result in results)

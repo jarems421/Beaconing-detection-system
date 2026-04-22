@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Callable, Protocol
+from typing import Protocol
 
 from beacon_detector.data import (
     GenerationScenario,
@@ -18,8 +19,8 @@ from beacon_detector.detection import (
     StatisticalBaselineConfig,
     SupervisedDetectorConfig,
     SupervisedDetectorType,
-    detect_flow_feature_rows_anomaly,
     detect_flow_feature_rows,
+    detect_flow_feature_rows_anomaly,
     detect_flow_feature_rows_statistical,
     detect_flow_feature_rows_supervised,
     fit_anomaly_detector,
@@ -27,8 +28,7 @@ from beacon_detector.detection import (
     fit_supervised_detector,
 )
 from beacon_detector.features import FlowFeatures, extract_features_from_flows
-from beacon_detector.flows import FlowKey
-from beacon_detector.flows import build_flows
+from beacon_detector.flows import FlowKey, build_flows
 
 from .cache import FeatureCacheConfig, get_or_build_feature_rows
 from .metrics import (
@@ -37,6 +37,7 @@ from .metrics import (
     calculate_classification_metrics,
     summarize_metric_spread,
 )
+
 
 class DetectionContribution(Protocol):
     rule_name: str
@@ -131,6 +132,7 @@ class EvaluationSummary:
     per_scenario_rates: tuple[ScenarioDetectionRate, ...]
     failure_records: tuple[PredictionRecord, ...]
     near_threshold_records: tuple[PredictionRecord, ...]
+    decision_threshold: float
 
 
 def build_default_evaluation_grid(
@@ -343,7 +345,10 @@ def evaluate_rule_detector(
     near_threshold_margin: float = 0.3,
 ) -> EvaluationSummary:
     thresholds = thresholds or RuleThresholds()
-    detector = lambda rows: detect_flow_feature_rows(rows, thresholds=thresholds)
+
+    def detector(rows: list[FlowFeatures]) -> list[DetectionResult]:
+        return detect_flow_feature_rows(rows, thresholds=thresholds)
+
     return evaluate_cases(
         cases or build_default_evaluation_grid(),
         detector=detector,
@@ -422,7 +427,10 @@ def evaluate_statistical_detector(
         cache_config=cache_config,
     )
     model = fit_statistical_baseline(reference_features, config=config)
-    detector = lambda rows: detect_flow_feature_rows_statistical(rows, model=model)
+
+    def detector(rows: list[FlowFeatures]) -> list[DetectionResult]:
+        return detect_flow_feature_rows_statistical(rows, model=model)
+
     return evaluate_cases(
         cases or build_default_evaluation_grid(start_time=start_time),
         detector=detector,
@@ -449,6 +457,7 @@ def evaluate_statistical_detector_multi_seed(
             start_time=start_time,
             template_cases=cases,
         ),
+        strict=True,
     ):
         reference_features = build_statistical_reference_features(
             seed=seed + STATISTICAL_REFERENCE_SEED_OFFSET,
@@ -456,10 +465,13 @@ def evaluate_statistical_detector_multi_seed(
             cache_config=cache_config,
         )
         model = fit_statistical_baseline(reference_features, config=config)
-        detector = lambda rows, model=model: detect_flow_feature_rows_statistical(
-            rows,
+
+        def detector(
+            rows: list[FlowFeatures],
             model=model,
-        )
+        ) -> list[DetectionResult]:
+            return detect_flow_feature_rows_statistical(rows, model=model)
+
         fitted_thresholds.append(model.prediction_threshold)
         summaries.append(
             evaluate_cases(
@@ -511,7 +523,10 @@ def evaluate_anomaly_detector(
         detector_type=detector_type,
         config=config,
     )
-    detector = lambda rows: detect_flow_feature_rows_anomaly(rows, model=model)
+
+    def detector(rows: list[FlowFeatures]) -> list[DetectionResult]:
+        return detect_flow_feature_rows_anomaly(rows, model=model)
+
     return evaluate_cases(
         cases or build_default_evaluation_grid(start_time=start_time),
         detector=detector,
@@ -531,6 +546,7 @@ def evaluate_anomaly_detector_multi_seed(
     near_threshold_margin: float = 0.3,
 ) -> MultiSeedEvaluationSummary:
     summaries: list[EvaluationSummary] = []
+    fitted_thresholds: list[float] = []
     for seed, seed_cases in zip(
         seeds,
         build_multiseed_evaluation_grid(
@@ -538,18 +554,19 @@ def evaluate_anomaly_detector_multi_seed(
             start_time=start_time,
             template_cases=cases,
         ),
+        strict=True,
     ):
-        summaries.append(
-            evaluate_anomaly_detector(
-                detector_type=detector_type,
-                cases=seed_cases,
-                config=config,
-                reference_seed=seed + STATISTICAL_REFERENCE_SEED_OFFSET,
-                cache_config=cache_config,
-                start_time=start_time,
-                near_threshold_margin=near_threshold_margin,
-            )
+        summary = evaluate_anomaly_detector(
+            detector_type=detector_type,
+            cases=seed_cases,
+            config=config,
+            reference_seed=seed + STATISTICAL_REFERENCE_SEED_OFFSET,
+            cache_config=cache_config,
+            start_time=start_time,
+            near_threshold_margin=near_threshold_margin,
         )
+        summaries.append(summary)
+        fitted_thresholds.append(summary.decision_threshold)
 
     combined_records = [
         record for summary in summaries for record in summary.records
@@ -558,7 +575,11 @@ def evaluate_anomaly_detector_multi_seed(
         seed_summaries=tuple(summaries),
         combined_summary=summarize_prediction_records(
             combined_records,
-            decision_threshold=0.0,
+            decision_threshold=(
+                sum(fitted_thresholds) / len(fitted_thresholds)
+                if fitted_thresholds
+                else 0.0
+            ),
             near_threshold_margin=near_threshold_margin,
         ),
         metric_spread=summarize_metric_spread(
@@ -613,7 +634,10 @@ def evaluate_supervised_detector(
         detector_type=detector_type,
         config=config,
     )
-    detector = lambda rows: detect_flow_feature_rows_supervised(rows, model=model)
+
+    def detector(rows: list[FlowFeatures]) -> list[DetectionResult]:
+        return detect_flow_feature_rows_supervised(rows, model=model)
+
     return evaluate_cases(
         cases or build_default_evaluation_grid(start_time=start_time),
         detector=detector,
@@ -646,7 +670,10 @@ def evaluate_supervised_detector_multi_seed(
         detector_type=detector_type,
         config=config,
     )
-    detector = lambda rows: detect_flow_feature_rows_supervised(rows, model=model)
+
+    def detector(rows: list[FlowFeatures]) -> list[DetectionResult]:
+        return detect_flow_feature_rows_supervised(rows, model=model)
+
     summaries = [
         evaluate_cases(
             seed_cases,
@@ -773,6 +800,7 @@ def summarize_prediction_records(
         per_scenario_rates=tuple(_calculate_per_scenario_rates(records)),
         failure_records=failures,
         near_threshold_records=near_threshold,
+        decision_threshold=decision_threshold,
     )
 
 

@@ -21,12 +21,18 @@ def extract_features_from_flow(
     flow: Flow,
     burst_threshold_seconds: float = 10.0,
     timing_consistency_tolerance_fraction: float = 0.20,
+    reject_mixed_labels: bool = True,
 ) -> FlowFeatures:
     """Extract behavioural features from a single flow.
 
     Bursts are runs of at least two consecutive events where each adjacent
     inter-arrival time is less than or equal to the configured threshold.
     """
+
+    if reject_mixed_labels and flow.has_mixed_labels:
+        raise ValueError(
+            "Cannot extract features from a mixed-label flow; split or drop it first."
+        )
 
     sizes = [event.size_bytes for event in flow.events]
     interarrivals = calculate_interarrival_times(flow)
@@ -129,12 +135,14 @@ def extract_features_from_flows(
     flows: list[Flow],
     burst_threshold_seconds: float = 10.0,
     timing_consistency_tolerance_fraction: float = 0.20,
+    reject_mixed_labels: bool = True,
 ) -> list[FlowFeatures]:
     return [
         extract_features_from_flow(
             flow,
             burst_threshold_seconds=burst_threshold_seconds,
             timing_consistency_tolerance_fraction=timing_consistency_tolerance_fraction,
+            reject_mixed_labels=reject_mixed_labels,
         )
         for flow in flows
     ]
@@ -266,7 +274,7 @@ def calculate_adjacent_similarity_fraction(
     if len(values) < 2:
         return None
 
-    pairs = list(zip(values, values[1:]))
+    pairs = list(zip(values, values[1:], strict=False))
     matches = sum(
         1
         for left, right in pairs
@@ -288,7 +296,7 @@ def calculate_longest_similar_run(
 
     longest_run = 1
     current_run = 1
-    for left, right in zip(values, values[1:]):
+    for left, right in zip(values, values[1:], strict=False):
         if _relative_difference(float(left), float(right)) <= tolerance_fraction:
             current_run += 1
         else:

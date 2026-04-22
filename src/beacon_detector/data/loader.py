@@ -9,6 +9,8 @@ from .types import ProtocolType, TrafficEvent, TrafficLabel
 CSV_FIELDS = (
     "timestamp",
     "src_ip",
+    "src_port",
+    "direction",
     "dst_ip",
     "dst_port",
     "protocol",
@@ -40,6 +42,8 @@ class CsvTrafficDataLoader:
                         size_bytes=int(row["size_bytes"]),
                         label=_parse_label(row["label"]),
                         scenario_name=row.get("scenario_name") or "unknown",
+                        src_port=_optional_identity_value(row.get("src_port")),
+                        direction=_optional_identity_value(row.get("direction")),
                     )
                 )
         return events
@@ -56,6 +60,8 @@ def save_events_to_csv(events: list[TrafficEvent], path: str | Path) -> Path:
                 {
                     "timestamp": event.timestamp.isoformat(),
                     "src_ip": event.src_ip,
+                    "src_port": event.src_port or "",
+                    "direction": event.direction or "",
                     "dst_ip": event.dst_ip,
                     "dst_port": event.dst_port,
                     "protocol": event.protocol,
@@ -79,3 +85,10 @@ def _parse_label(raw: str) -> TrafficLabel:
     if lowered in ("benign", "beacon"):
         return lowered
     raise ValueError(f"Unsupported label value: {raw}")
+
+
+def _optional_identity_value(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    stripped = raw.strip()
+    return stripped or None

@@ -13,6 +13,7 @@ from beacon_detector.evaluation.ctu13 import (
     Ctu13FeatureDataset,
     Ctu13PredictionRecord,
     Ctu13ScenarioInput,
+    build_ctu13_feature_dataset,
     export_ctu13_multi_scenario_tables,
     run_ctu13_multi_scenario_evaluation,
 )
@@ -57,6 +58,8 @@ class Ctu13AdapterTests(unittest.TestCase):
 
         events = result.events
         self.assertEqual(events[0].protocol, "tcp")
+        self.assertEqual(events[0].src_port, "1234")
+        self.assertEqual(events[0].direction, "->")
         self.assertEqual(events[0].dst_port, 80)
         self.assertEqual(events[0].size_bytes, 500)
         self.assertEqual(events[0].label, "beacon")
@@ -74,6 +77,73 @@ class Ctu13AdapterTests(unittest.TestCase):
         self.assertEqual(repeated_flow.event_count, 2)
         self.assertEqual(repeated_flow.label, "beacon")
         self.assertEqual(repeated_flow.total_bytes, 1100)
+
+    def test_ctu13_source_port_and_direction_prevent_unrelated_merges(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "sample.binetflow"
+            rows = [
+                _ctu_row("2011/08/10 09:47:50.000000", sport="1234", direction="  ->"),
+                _ctu_row("2011/08/10 09:47:55.000000", sport="5678", direction="  ->"),
+                _ctu_row("2011/08/10 09:48:00.000000", sport="1234", direction="  <-"),
+            ]
+            _write_binetflow_rows(path, rows)
+
+            result = load_ctu13_binetflow_events(path, scenario_name="ctu13_test")
+
+        flows = build_flows(result.events)
+
+        self.assertEqual(len(flows), 3)
+        self.assertEqual({flow.flow_key.src_port for flow in flows}, {"1234", "5678"})
+        self.assertEqual({flow.flow_key.direction for flow in flows}, {"->", "<-"})
+
+    def test_ctu13_feature_dataset_drops_mixed_label_grouped_flows(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "mixed.binetflow"
+            rows = [
+                _ctu_row(
+                    "2011/08/10 09:47:50.000000",
+                    label="flow=From-Normal-V42-TCP",
+                ),
+                _ctu_row(
+                    "2011/08/10 09:47:55.000000",
+                    label="flow=From-Botnet-V42-TCP",
+                ),
+            ]
+            _write_binetflow_rows(path, rows)
+
+            dataset = build_ctu13_feature_dataset(
+                Ctu13EvaluationConfig(input_path=path, scenario_name="ctu13_test")
+            )
+
+        self.assertEqual(dataset.dropped_mixed_label_flow_count, 1)
+        self.assertEqual(dataset.feature_rows, ())
+
+    def test_ctu13_reference_split_is_stable_under_row_reordering(self) -> None:
+        rows = [
+            _ctu_row(
+                f"2011/08/10 09:47:{50 + index:02d}.000000",
+                sport=str(2000 + index),
+                label="flow=From-Normal-V42-TCP",
+            )
+            for index in range(6)
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            first_path = Path(temp_dir) / "ordered.binetflow"
+            second_path = Path(temp_dir) / "reversed.binetflow"
+            _write_binetflow_rows(first_path, rows)
+            _write_binetflow_rows(second_path, list(reversed(rows)))
+
+            first = build_ctu13_feature_dataset(
+                Ctu13EvaluationConfig(input_path=first_path, scenario_name="ctu13_test")
+            )
+            second = build_ctu13_feature_dataset(
+                Ctu13EvaluationConfig(input_path=second_path, scenario_name="ctu13_test")
+            )
+
+        self.assertEqual(
+            {row.flow_key for row in first.reference_benign_rows},
+            {row.flow_key for row in second.reference_benign_rows},
+        )
 
     def test_feature_transfer_summary_documents_schema_mismatch(self) -> None:
         rows = ctu13_feature_transfer_summary()
@@ -222,6 +292,39 @@ def _write_sample_binetflow(path: Path) -> None:
             "Label": "flow=From-Botnet-V42-ICMP",
         },
     ]
+    with path.open("w", encoding="utf-8", newline="") as output_file:
+        writer = csv.DictWriter(output_file, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _ctu_row(
+    start_time: str,
+    *,
+    sport: str = "1234",
+    direction: str = "  ->",
+    label: str = "flow=From-Botnet-V42-TCP-Established",
+) -> dict[str, str]:
+    return {
+        "StartTime": start_time,
+        "Dur": "1.0",
+        "Proto": "tcp",
+        "SrcAddr": "147.32.84.165",
+        "Sport": sport,
+        "Dir": direction,
+        "DstAddr": "1.2.3.4",
+        "Dport": "80",
+        "State": "CON",
+        "sTos": "0",
+        "dTos": "0",
+        "TotPkts": "5",
+        "TotBytes": "500",
+        "SrcBytes": "300",
+        "Label": label,
+    }
+
+
+def _write_binetflow_rows(path: Path, rows: list[dict[str, str]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as output_file:
         writer = csv.DictWriter(output_file, fieldnames=list(rows[0].keys()))
         writer.writeheader()

@@ -3,14 +3,17 @@
 This project uses a `src/` layout. The cleanest local setup is:
 
 ```powershell
-pip install -r requirements.txt
-pip install -e .
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 For lint tooling, install the optional dev dependency:
 
 ```powershell
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 If you do not install the package, set `PYTHONPATH` before running modules:
@@ -25,6 +28,12 @@ Run the full test suite:
 
 ```powershell
 python -m unittest discover -s tests
+```
+
+Run lint checks:
+
+```powershell
+python -m ruff check .
 ```
 
 ## Main Evaluation Entrypoint

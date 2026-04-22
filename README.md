@@ -128,14 +128,17 @@ result, and one local scorer command. It is not a dashboard or production monito
 ## Setup
 
 ```powershell
-pip install -r requirements.txt
-pip install -e .
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 Optional lint tooling:
 
 ```powershell
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 ## Quick Start
@@ -144,6 +147,12 @@ Run the tests:
 
 ```powershell
 python -m unittest discover -s tests
+```
+
+Run lint checks:
+
+```powershell
+python -m ruff check .
 ```
 
 Run a quick synthetic evaluation:

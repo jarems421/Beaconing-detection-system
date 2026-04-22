@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -88,6 +89,7 @@ class Ctu13FeatureDataset:
     reference_benign_rows: tuple[FlowFeatures, ...]
     evaluation_rows: tuple[FlowFeatures, ...]
     parse_summary: Ctu13ParseSummary
+    dropped_mixed_label_flow_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,7 +123,9 @@ def build_ctu13_feature_dataset(config: Ctu13EvaluationConfig) -> Ctu13FeatureDa
         max_rows=config.max_rows,
     )
     flows = build_flows(load_result.events)
-    feature_rows = tuple(extract_features_from_flows(flows))
+    clean_flows = [flow for flow in flows if not flow.has_mixed_labels]
+    dropped_mixed_label_flow_count = len(flows) - len(clean_flows)
+    feature_rows = tuple(extract_features_from_flows(clean_flows))
     reference_benign, evaluation_rows = _split_reference_and_evaluation_rows(
         list(feature_rows),
         benign_reference_fraction=config.benign_reference_fraction,
@@ -131,6 +135,7 @@ def build_ctu13_feature_dataset(config: Ctu13EvaluationConfig) -> Ctu13FeatureDa
         reference_benign_rows=tuple(reference_benign),
         evaluation_rows=tuple(evaluation_rows),
         parse_summary=load_result.summary,
+        dropped_mixed_label_flow_count=dropped_mixed_label_flow_count,
     )
 
 
@@ -327,7 +332,11 @@ def _evaluate_lof_baseline(
     results = detect_flow_feature_rows_anomaly(evaluation_rows, model=model)
     return _detector_evaluation_from_results(
         detector_name=LOCAL_OUTLIER_FACTOR_NAME,
-        operating_point=f"ctu13_benign_reference;contamination={config.contamination:g}",
+        operating_point=(
+            f"ctu13_benign_reference;contamination={config.contamination:g};"
+            f"threshold={model.prediction_threshold:g};"
+            f"calibration_flows={model.calibration_flow_count}"
+        ),
         feature_rows=evaluation_rows,
         results=results,
     )
@@ -422,8 +431,14 @@ def _split_reference_and_evaluation_rows(
     if not 0 < benign_reference_fraction < 1:
         raise ValueError("benign_reference_fraction must be between 0 and 1.")
 
-    benign_rows = [row for row in feature_rows if row.label == "benign"]
-    beacon_rows = [row for row in feature_rows if row.label == "beacon"]
+    benign_rows = sorted(
+        [row for row in feature_rows if row.label == "benign"],
+        key=_stable_feature_row_key,
+    )
+    beacon_rows = sorted(
+        [row for row in feature_rows if row.label == "beacon"],
+        key=_stable_feature_row_key,
+    )
     reference_count = max(2, int(len(benign_rows) * benign_reference_fraction))
     reference_count = min(reference_count, len(benign_rows))
 
@@ -431,6 +446,23 @@ def _split_reference_and_evaluation_rows(
     heldout_benign_rows = benign_rows[reference_count:]
     evaluation_rows = heldout_benign_rows + beacon_rows
     return reference_benign_rows, evaluation_rows
+
+
+def _stable_feature_row_key(row: FlowFeatures) -> str:
+    flow_key = row.flow_key
+    identity = "|".join(
+        (
+            flow_key.src_ip,
+            flow_key.src_port or "",
+            flow_key.direction or "",
+            flow_key.dst_ip,
+            str(flow_key.dst_port),
+            flow_key.protocol,
+            row.scenario_name or "",
+            row.label,
+        )
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 def _write_detector_comparison(
@@ -541,6 +573,7 @@ def _write_metadata(output_dir: Path, result: Ctu13EvaluationResult) -> Path:
         "training_seed_list": list(result.config.training_seeds),
         "parse_summary": asdict(result.dataset.parse_summary),
         "feature_row_count": len(result.dataset.feature_rows),
+        "dropped_mixed_label_flow_count": result.dataset.dropped_mixed_label_flow_count,
         "reference_benign_flow_count": len(result.dataset.reference_benign_rows),
         "evaluation_flow_count": len(result.dataset.evaluation_rows),
         "detectors": [
@@ -554,8 +587,10 @@ def _write_metadata(output_dir: Path, result: Ctu13EvaluationResult) -> Path:
             "CTU-13 rows are bidirectional flow records, not raw packets.",
             (
                 "Current feature extraction treats each CTU-13 row as a connection-level event "
-                "and computes behaviour across repeated flow records sharing the project FlowKey."
+                "and computes behaviour across repeated flow records sharing the richer CTU "
+                "FlowKey including source port and direction."
             ),
+            "Mixed-label grouped flows are dropped before feature extraction and counted.",
             "Background and To-* labels are excluded by default because they are ambiguous.",
             (
                 "Random Forest operating points are trained on synthetic features and evaluated "
@@ -563,7 +598,8 @@ def _write_metadata(output_dir: Path, result: Ctu13EvaluationResult) -> Path:
             ),
             (
                 "LOF uses a held-out CTU-13 benign reference split because anomaly baselines "
-                "require benign reference behaviour."
+                "require benign reference behaviour; its threshold is calibrated from a "
+                "separate benign subset inside that reference split."
             ),
         ],
     }
@@ -758,6 +794,10 @@ def _write_multi_metadata(
                     asdict(scenario_result.dataset.parse_summary)
                     for scenario_result in policy_result.scenario_results
                 ],
+                "dropped_mixed_label_flow_count": sum(
+                    scenario_result.dataset.dropped_mixed_label_flow_count
+                    for scenario_result in policy_result.scenario_results
+                ),
                 "detectors": [
                     {
                         "detector_name": detector_result.detector_name,

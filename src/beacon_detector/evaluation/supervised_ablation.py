@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from typing import Any
 
@@ -15,10 +15,10 @@ from beacon_detector.detection import (
 
 from .cache import FeatureCacheConfig
 from .runner import (
-    EvaluationCase,
     FROZEN_BASELINE_SEEDS,
-    MultiSeedEvaluationSummary,
     SUPERVISED_TRAINING_SEEDS,
+    EvaluationCase,
+    MultiSeedEvaluationSummary,
     build_default_evaluation_grid,
     evaluate_supervised_detector_multi_seed,
 )

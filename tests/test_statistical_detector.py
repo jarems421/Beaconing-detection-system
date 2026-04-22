@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -28,7 +28,12 @@ class TestStatisticalDetector(unittest.TestCase):
         reference_features = _features_for_scenario(GenerationScenario.NORMAL, seed=71)
         model = fit_statistical_baseline(reference_features)
 
-        self.assertEqual(model.reference_flow_count, len(reference_features))
+        self.assertLess(model.reference_flow_count, len(reference_features))
+        self.assertGreater(model.calibration_flow_count, 0)
+        self.assertEqual(
+            model.reference_flow_count + model.calibration_flow_count,
+            len(reference_features),
+        )
         self.assertEqual(
             tuple(reference.feature_name for reference in model.references),
             DEFAULT_STATISTICAL_FEATURES,

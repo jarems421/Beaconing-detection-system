@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import asdict, dataclass, replace
-from datetime import datetime, timezone
 import json
+from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
 from typing import Any, Literal
@@ -20,20 +20,17 @@ from beacon_detector.detection import (
 )
 from beacon_detector.features import FlowFeatures
 
-from .cache import FeatureCacheConfig, FEATURE_SCHEMA_VERSION
-from .metrics import calculate_classification_metrics
+from .cache import FEATURE_SCHEMA_VERSION, FeatureCacheConfig
 from .runner import (
-    EvaluationCase,
     FROZEN_BASELINE_SEEDS,
-    MultiSeedEvaluationSummary,
     SUPERVISED_TRAINING_SEEDS,
+    EvaluationCase,
+    MultiSeedEvaluationSummary,
     build_case_feature_rows,
     build_default_evaluation_grid,
     build_multiseed_evaluation_grid,
     build_supervised_training_features,
     evaluate_supervised_detector_multi_seed,
-    summarize_metric_spread,
-    summarize_prediction_records,
 )
 from .shortcut_stress import SHORTCUT_STRESS_SEEDS
 from .supervised_ablation import SupervisedFeatureSet, feature_set_by_name
@@ -456,7 +453,7 @@ def _collect_time_size_records(
                 if row.scenario_name == "time_size_jittered"
             ]
             results = detect_flow_feature_rows_supervised(feature_rows, model=model)
-            for features, result in zip(feature_rows, results):
+            for features, result in zip(feature_rows, results, strict=True):
                 records.append(
                     DiagnosticFlowRecord(
                         detector_name=detector_name,
@@ -731,7 +728,11 @@ def _write_profile_rates(
                     "training_regime": result.training_regime,
                     "scenario_or_profile_name": rate.scenario_name,
                     "category": "benign_profile" if rate.true_beacon_flows == 0 else "beacon",
-                    "rate_type": "false_flag_rate" if rate.true_beacon_flows == 0 else "detection_rate",
+                    "rate_type": (
+                        "false_flag_rate"
+                        if rate.true_beacon_flows == 0
+                        else "detection_rate"
+                    ),
                     "total_flows": rate.total_flows,
                     "true_beacon_flows": rate.true_beacon_flows,
                     "predicted_beacon_flows": rate.predicted_beacon_flows,
@@ -764,7 +765,9 @@ def _write_metadata(
         ],
         "stress_training_case_names": [case.name for case in stress_training_cases],
         "stress_eval_case_names": [case.name for case in stress_eval_cases],
-        "stress_training_difficulty": [_case_difficulty_row(case) for case in stress_training_cases],
+        "stress_training_difficulty": [
+            _case_difficulty_row(case) for case in stress_training_cases
+        ],
         "stress_eval_difficulty": [_case_difficulty_row(case) for case in stress_eval_cases],
         "training_seed_list": list(training_seeds),
         "evaluation_seed_list": list(evaluation_seeds),
@@ -789,8 +792,12 @@ def _case_difficulty_row(case: EvaluationCase) -> dict[str, Any]:
         ).value,
         "beacon_event_count": case.config.beacon_event_count,
         "time_size_jittered_event_count": case.config.time_size_jittered_event_count,
-        "time_size_jittered_jitter_fraction": case.config.time_size_jittered_jitter_fraction,
-        "time_size_jittered_size_jitter_fraction": case.config.time_size_jittered_size_jitter_fraction,
+        "time_size_jittered_jitter_fraction": (
+            case.config.time_size_jittered_jitter_fraction
+        ),
+        "time_size_jittered_size_jitter_fraction": (
+            case.config.time_size_jittered_size_jitter_fraction
+        ),
     }
 
 

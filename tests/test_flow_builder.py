@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -14,7 +14,7 @@ from beacon_detector.data import (
     generate_combined_synthetic_dataset,
     save_events_to_csv,
 )
-from beacon_detector.flows import FlowKey, build_flows, load_flows_from_csv
+from beacon_detector.flows import build_flows, load_flows_from_csv
 
 
 class TestFlowBuilder(unittest.TestCase):
@@ -55,14 +55,71 @@ class TestFlowBuilder(unittest.TestCase):
     def test_mixed_labels_and_scenarios_are_preserved_on_flow(self) -> None:
         start = datetime(2026, 1, 1, tzinfo=timezone.utc)
         events = [
-            _event(start, "10.0.0.1", "203.0.113.1", 443, "tcp", label="benign", scenario_name="normal"),
-            _event(start + timedelta(seconds=5), "10.0.0.1", "203.0.113.1", 443, "tcp", label="beacon", scenario_name="fixed_periodic"),
+            _event(
+                start,
+                "10.0.0.1",
+                "203.0.113.1",
+                443,
+                "tcp",
+                label="benign",
+                scenario_name="normal",
+            ),
+            _event(
+                start + timedelta(seconds=5),
+                "10.0.0.1",
+                "203.0.113.1",
+                443,
+                "tcp",
+                label="beacon",
+                scenario_name="fixed_periodic",
+            ),
         ]
 
         flow = build_flows(events)[0]
 
-        self.assertEqual(flow.label, "beacon")
+        with self.assertRaises(ValueError):
+            _ = flow.label
+        self.assertTrue(flow.has_mixed_labels)
+        self.assertEqual(flow.label_counts, {"benign": 1, "beacon": 1})
         self.assertEqual(flow.scenario_names, ("fixed_periodic", "normal"))
+
+    def test_source_port_and_direction_are_part_of_flow_identity(self) -> None:
+        start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        events = [
+            _event(
+                start,
+                "10.0.0.1",
+                "203.0.113.1",
+                443,
+                "tcp",
+                src_port="1111",
+                direction="->",
+            ),
+            _event(
+                start + timedelta(seconds=5),
+                "10.0.0.1",
+                "203.0.113.1",
+                443,
+                "tcp",
+                src_port="2222",
+                direction="->",
+            ),
+            _event(
+                start + timedelta(seconds=10),
+                "10.0.0.1",
+                "203.0.113.1",
+                443,
+                "tcp",
+                src_port="1111",
+                direction="<-",
+            ),
+        ]
+
+        flows = build_flows(events)
+
+        self.assertEqual(len(flows), 3)
+        self.assertEqual({flow.flow_key.src_port for flow in flows}, {"1111", "2222"})
+        self.assertEqual({flow.flow_key.direction for flow in flows}, {"->", "<-"})
 
     def test_can_load_synthetic_csv_and_convert_to_flows(self) -> None:
         config = SyntheticTrafficConfig(
@@ -158,6 +215,8 @@ def _event(
     protocol: str,
     label: str = "benign",
     scenario_name: str = "normal",
+    src_port: str | None = None,
+    direction: str | None = None,
 ) -> TrafficEvent:
     return TrafficEvent(
         timestamp=timestamp,
@@ -168,6 +227,8 @@ def _event(
         size_bytes=100,
         label=label,  # type: ignore[arg-type]
         scenario_name=scenario_name,
+        src_port=src_port,
+        direction=direction,
     )
 
 

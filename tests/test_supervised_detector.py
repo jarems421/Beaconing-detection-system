@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -39,6 +39,9 @@ class TestSupervisedDetector(unittest.TestCase):
         )
         self.assertTrue(all(0.0 <= result.score <= 1.0 for result in results))
         self.assertTrue(all(len(result.contributions) > 0 for result in results))
+        self.assertTrue(
+            all("global" in contribution.reason for contribution in results[0].contributions)
+        )
 
     def test_random_forest_fit_predict_flow(self) -> None:
         training_rows = _training_features(seed=82)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -118,7 +119,7 @@ def _evaluate_native_detectors(
     *,
     benign_reference_fraction: float,
 ) -> list[CtuNativeDetectorResult]:
-    reference_rows, evaluation_rows = _split_reference_and_evaluation_rows(
+    reference_rows, calibration_rows, evaluation_rows = _split_reference_and_evaluation_rows(
         rows,
         benign_reference_fraction=benign_reference_fraction,
     )
@@ -131,7 +132,7 @@ def _evaluate_native_detectors(
                 "and burst fields; applying it to CTU-native fields would be a fake comparison."
             ),
         ),
-        _evaluate_native_lof(reference_rows, evaluation_rows),
+        _evaluate_native_lof(reference_rows, calibration_rows, evaluation_rows),
         _incompatible_result(
             "rf_full_threshold_0p6",
             "synthetic_training;threshold=0.6;features=full",
@@ -154,23 +155,32 @@ def _evaluate_native_detectors(
 
 def _evaluate_native_lof(
     reference_rows: list[Ctu13NativeFeatures],
+    calibration_rows: list[Ctu13NativeFeatures],
     evaluation_rows: list[Ctu13NativeFeatures],
 ) -> CtuNativeDetectorResult:
     if len(reference_rows) < 2:
         raise ValueError("Native CTU LOF requires at least two benign reference rows.")
+    if not calibration_rows:
+        raise ValueError("Native CTU LOF requires at least one benign calibration row.")
 
     scaler = StandardScaler()
     reference_matrix = _native_feature_matrix(reference_rows)
+    calibration_matrix = _native_feature_matrix(calibration_rows)
     evaluation_matrix = _native_feature_matrix(evaluation_rows)
     scaled_reference = scaler.fit_transform(reference_matrix)
+    scaled_calibration = scaler.transform(calibration_matrix)
     scaled_evaluation = scaler.transform(evaluation_matrix)
     estimator = LocalOutlierFactor(n_neighbors=20, contamination=0.03, novelty=True)
     estimator.fit(scaled_reference)
+    calibration_scores = [
+        -float(score) for score in estimator.decision_function(scaled_calibration)
+    ]
+    threshold = _quantile(calibration_scores, 0.97)
     scores = [-float(score) for score in estimator.decision_function(scaled_evaluation)]
 
     records: list[dict[str, Any]] = []
     for row, score in zip(evaluation_rows, scores, strict=False):
-        predicted_label = "beacon" if score >= 0.0 else "benign"
+        predicted_label = "beacon" if score >= threshold else "benign"
         records.append(
             {
                 "scenario_name": row.scenario_name,
@@ -190,7 +200,10 @@ def _evaluate_native_lof(
     )
     return CtuNativeDetectorResult(
         detector_name="local_outlier_factor_v1",
-        operating_point="ctu_native_benign_reference;contamination=0.03",
+        operating_point=(
+            "ctu_native_benign_reference;contamination=0.03;"
+            f"threshold={threshold:g};calibration_rows={len(calibration_rows)}"
+        ),
         feature_path="ctu_native",
         compatibility_status="compatible_unsupervised_reference",
         compatibility_notes=(
@@ -222,14 +235,45 @@ def _split_reference_and_evaluation_rows(
     rows: list[Ctu13NativeFeatures],
     *,
     benign_reference_fraction: float,
-) -> tuple[list[Ctu13NativeFeatures], list[Ctu13NativeFeatures]]:
-    benign_rows = [row for row in rows if row.label == "benign"]
-    beacon_rows = [row for row in rows if row.label == "beacon"]
+) -> tuple[list[Ctu13NativeFeatures], list[Ctu13NativeFeatures], list[Ctu13NativeFeatures]]:
+    benign_rows = sorted(
+        [row for row in rows if row.label == "benign"],
+        key=_stable_native_row_key,
+    )
+    beacon_rows = sorted(
+        [row for row in rows if row.label == "beacon"],
+        key=_stable_native_row_key,
+    )
     if len(benign_rows) < 2:
         raise ValueError("At least two benign CTU-native rows are required.")
+    if len(benign_rows) < 3:
+        return benign_rows, benign_rows, beacon_rows
     reference_count = max(2, int(len(benign_rows) * benign_reference_fraction))
-    reference_count = min(reference_count, len(benign_rows))
-    return benign_rows[:reference_count], benign_rows[reference_count:] + beacon_rows
+    reference_count = min(reference_count, len(benign_rows) - 1)
+    reference_rows = benign_rows[:reference_count]
+    remaining_benign = benign_rows[reference_count:]
+    calibration_count = max(1, len(remaining_benign) // 2)
+    calibration_rows = remaining_benign[:calibration_count]
+    heldout_benign_rows = remaining_benign[calibration_count:]
+    return reference_rows, calibration_rows, heldout_benign_rows + beacon_rows
+
+
+def _stable_native_row_key(row: Ctu13NativeFeatures) -> str:
+    identity = "|".join(
+        (
+            row.scenario_name,
+            row.label_group,
+            row.protocol,
+            row.state,
+            str(row.dst_port),
+            str(row.duration_seconds),
+            str(row.total_packets),
+            str(row.total_bytes),
+            str(row.src_bytes),
+            row.label,
+        )
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 def _native_feature_matrix(rows: list[Ctu13NativeFeatures]) -> list[list[float]]:

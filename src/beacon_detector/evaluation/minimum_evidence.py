@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -16,10 +16,10 @@ from beacon_detector.data import (
     generate_synthetic_events,
 )
 from beacon_detector.detection import (
-    AnomalyDetectorConfig,
     FROZEN_RULE_BASELINE_NAME,
     FROZEN_RULE_BASELINE_THRESHOLDS,
     LOCAL_OUTLIER_FACTOR_NAME,
+    AnomalyDetectorConfig,
     SupervisedDetectorConfig,
     detect_flow_feature_rows,
     detect_flow_feature_rows_anomaly,
@@ -30,7 +30,7 @@ from beacon_detector.detection import (
 from beacon_detector.features import FlowFeatures, extract_features_from_flows
 from beacon_detector.flows import build_flows
 
-from .cache import FeatureCacheConfig, FEATURE_SCHEMA_VERSION, get_or_build_feature_rows
+from .cache import FEATURE_SCHEMA_VERSION, FeatureCacheConfig, get_or_build_feature_rows
 from .runner import (
     STATISTICAL_REFERENCE_SEED_OFFSET,
     SUPERVISED_TRAINING_SEEDS,
@@ -38,7 +38,7 @@ from .runner import (
     build_statistical_reference_features,
     build_supervised_training_features,
 )
-from .supervised_ablation import SupervisedFeatureSet, feature_set_by_name
+from .supervised_ablation import feature_set_by_name
 
 MINIMUM_EVIDENCE_EVENT_COUNTS = (3, 5, 7, 9, 12, 15, 18, 24)
 MINIMUM_EVIDENCE_SEEDS = (990, 991, 992)
@@ -201,7 +201,11 @@ def build_minimum_evidence_cases(
     cases: list[MinimumEvidenceCase] = []
     for scenario in build_minimum_evidence_scenarios(start_time=start_time):
         for event_count in event_counts:
-            config = _with_event_count(scenario.base_config, scenario.generation_scenario, event_count)
+            config = _with_event_count(
+                scenario.base_config,
+                scenario.generation_scenario,
+                event_count,
+            )
             cases.append(
                 MinimumEvidenceCase(
                     scenario_family=scenario.scenario_family,
@@ -247,7 +251,12 @@ def export_minimum_evidence_tables(
         _write_summary(output_path, result),
         _write_detection_curves(output_path, result),
         _write_thresholds(output_path, result),
-        _write_metadata(output_path, cases=cases, seeds=seeds, training_seeds=training_seeds),
+        _write_metadata(
+            output_path,
+            cases=cases,
+            seeds=seeds,
+            training_seeds=training_seeds,
+        ),
     ]
 
 
@@ -261,7 +270,9 @@ def _run_rule_detector(
     for case, seed in _iter_seeded_cases(cases, seeds):
         rows = _case_features(case, seed=seed, cache_config=cache_config)
         results = detect_flow_feature_rows(rows, thresholds=FROZEN_RULE_BASELINE_THRESHOLDS)
-        records.extend(_records_from_results(FROZEN_RULE_BASELINE_NAME, operating_point, case, results))
+        records.extend(
+            _records_from_results(FROZEN_RULE_BASELINE_NAME, operating_point, case, results)
+        )
     return records
 
 
@@ -286,7 +297,14 @@ def _run_lof_detector(
             seeded_case = replace(case, config=replace(case.config, seed=seed))
             rows = _case_features(seeded_case, seed=seed, cache_config=cache_config)
             results = detect_flow_feature_rows_anomaly(rows, model=model)
-            records.extend(_records_from_results(LOCAL_OUTLIER_FACTOR_NAME, "default_lof", seeded_case, results))
+            records.extend(
+                _records_from_results(
+                    LOCAL_OUTLIER_FACTOR_NAME,
+                    "default_lof",
+                    seeded_case,
+                    results,
+                )
+            )
     return records
 
 
@@ -401,7 +419,9 @@ def _summarize_records(
         beacon_records = [record for record in group if record.true_label == "beacon"]
         benign_records = [record for record in group if record.true_label == "benign"]
         detected = [record for record in beacon_records if record.predicted_label == "beacon"]
-        false_positives = [record for record in benign_records if record.predicted_label == "beacon"]
+        false_positives = [
+            record for record in benign_records if record.predicted_label == "beacon"
+        ]
         scores = [record.score for record in beacon_records]
         rows.append(
             MinimumEvidenceSummaryRow(
@@ -545,8 +565,12 @@ def _write_metadata(
                 "generation_scenario": case.generation_scenario.value,
                 "jitter_fraction": case.config.jitter_fraction,
                 "beacon_size_jitter_fraction": case.config.beacon_size_jitter_fraction,
-                "time_size_jittered_jitter_fraction": case.config.time_size_jittered_jitter_fraction,
-                "time_size_jittered_size_jitter_fraction": case.config.time_size_jittered_size_jitter_fraction,
+                "time_size_jittered_jitter_fraction": (
+                    case.config.time_size_jittered_jitter_fraction
+                ),
+                "time_size_jittered_size_jitter_fraction": (
+                    case.config.time_size_jittered_size_jitter_fraction
+                ),
                 "shortcut_overlap_level": ShortcutOverlapLevel(
                     case.config.shortcut_overlap_level
                 ).value,

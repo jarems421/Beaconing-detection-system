@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
 import math
+from dataclasses import dataclass
 
 from beacon_detector.features import FlowFeatures
 from beacon_detector.flows import FlowKey
@@ -30,6 +31,7 @@ STATISTICAL_BASELINE_NAME = "statistical_zscore_baseline_v1"
 class StatisticalBaselineConfig:
     feature_names: tuple[str, ...] = DEFAULT_STATISTICAL_FEATURES
     benign_score_quantile: float = 0.99
+    calibration_fraction: float = 0.25
     min_reference_std: float = 1e-6
     missing_value: float = 0.0
     top_contribution_count: int = 5
@@ -48,6 +50,7 @@ class StatisticalBaselineModel:
     references: tuple[FeatureReference, ...]
     prediction_threshold: float
     reference_flow_count: int
+    calibration_flow_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,9 +85,13 @@ def fit_statistical_baseline(
     config: StatisticalBaselineConfig | None = None,
 ) -> StatisticalBaselineModel:
     config = config or StatisticalBaselineConfig()
-    reference_rows = [row for row in feature_rows if row.label == "benign"]
-    if not reference_rows:
+    benign_rows = [row for row in feature_rows if row.label == "benign"]
+    if not benign_rows:
         raise ValueError("At least one benign reference flow is required.")
+    reference_rows, calibration_rows = _split_reference_and_calibration_rows(
+        benign_rows,
+        calibration_fraction=config.calibration_fraction,
+    )
 
     references = tuple(
         _fit_feature_reference(feature_name, reference_rows, config)
@@ -95,15 +102,17 @@ def fit_statistical_baseline(
         references=references,
         prediction_threshold=0.0,
         reference_flow_count=len(reference_rows),
+        calibration_flow_count=len(calibration_rows),
     )
     reference_scores = [
-        score_flow_features(row, temporary_model)[0] for row in reference_rows
+        score_flow_features(row, temporary_model)[0] for row in calibration_rows
     ]
     return StatisticalBaselineModel(
         config=config,
         references=references,
         prediction_threshold=_quantile(reference_scores, config.benign_score_quantile),
         reference_flow_count=len(reference_rows),
+        calibration_flow_count=len(calibration_rows),
     )
 
 
@@ -203,6 +212,38 @@ def _feature_value(
     if value is None:
         return missing_value
     return float(value)
+
+
+def _split_reference_and_calibration_rows(
+    rows: list[FlowFeatures],
+    *,
+    calibration_fraction: float,
+) -> tuple[list[FlowFeatures], list[FlowFeatures]]:
+    if not 0 < calibration_fraction < 1:
+        raise ValueError("calibration_fraction must be between 0 and 1.")
+    ordered = sorted(rows, key=_stable_feature_row_key)
+    if len(ordered) == 1:
+        return ordered, ordered
+    reference_count = max(1, int(round(len(ordered) * (1.0 - calibration_fraction))))
+    reference_count = min(reference_count, len(ordered) - 1)
+    return ordered[:reference_count], ordered[reference_count:]
+
+
+def _stable_feature_row_key(row: FlowFeatures) -> str:
+    key = row.flow_key
+    identity = "|".join(
+        (
+            key.src_ip,
+            key.src_port or "",
+            key.direction or "",
+            key.dst_ip,
+            str(key.dst_port),
+            key.protocol,
+            row.scenario_name or "",
+            row.label,
+        )
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 def _quantile(values: list[float], quantile: float) -> float:

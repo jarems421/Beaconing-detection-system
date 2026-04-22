@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import sys
+import unittest
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-import sys
-import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -23,8 +23,7 @@ from beacon_detector.detection import (
     detect_flow_feature_rows,
     detect_flow_features,
 )
-from beacon_detector.features import FlowFeatures
-from beacon_detector.features import extract_features_from_flows
+from beacon_detector.features import FlowFeatures, extract_features_from_flows
 from beacon_detector.flows import FlowKey, build_flows, load_flows_from_csv
 
 

@@ -11,6 +11,7 @@ from beacon_detector.features import FlowFeatures
 from beacon_detector.flows import FlowKey
 
 from .rules import PredictedLabel
+
 SupervisedDetectorType = Literal["logistic_regression", "random_forest"]
 
 LOGISTIC_REGRESSION_NAME = "logistic_regression_v1"
@@ -148,7 +149,7 @@ def detect_flow_feature_rows_supervised(
     global_contributions = _top_model_contributions(model)
 
     results: list[SupervisedDetectionResult] = []
-    for features, probability in zip(feature_rows, probabilities):
+    for features, probability in zip(feature_rows, probabilities, strict=True):
         score = float(probability)
         predicted_label: PredictedLabel = (
             "beacon" if score >= model.config.prediction_threshold else "benign"
@@ -204,12 +205,12 @@ def _top_model_contributions(
 ) -> tuple[SupervisedContribution, ...]:
     if model.detector_type == "logistic_regression":
         coefficients = model.estimator.coef_[0]
-        pairs = zip(model.config.feature_names, coefficients)
-        reason_prefix = "logistic regression coefficient"
+        pairs = zip(model.config.feature_names, coefficients, strict=True)
+        reason_prefix = "global logistic regression coefficient"
     else:
         importances = model.estimator.feature_importances_
-        pairs = zip(model.config.feature_names, importances)
-        reason_prefix = "random forest feature importance"
+        pairs = zip(model.config.feature_names, importances, strict=True)
+        reason_prefix = "global random forest feature importance"
 
     contributions = [
         SupervisedContribution(

@@ -2,28 +2,27 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import replace
-from pathlib import Path
 import sys
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from beacon_detector.detection import (
+    FROZEN_RULE_BASELINE_NAME,
+    FROZEN_RULE_BASELINE_THRESHOLDS,
     ISOLATION_FOREST_NAME,
     LOCAL_OUTLIER_FACTOR_NAME,
     LOGISTIC_REGRESSION_NAME,
     RANDOM_FOREST_NAME,
-    AnomalyDetectorConfig,
-    FROZEN_RULE_BASELINE_NAME,
-    FROZEN_RULE_BASELINE_THRESHOLDS,
     STATISTICAL_BASELINE_NAME,
+    AnomalyDetectorConfig,
     StatisticalBaselineConfig,
     SupervisedDetectorConfig,
     supervised_operating_point,
 )
 from beacon_detector.evaluation import (
-    build_default_evaluation_grid,
     build_quick_evaluation_grid,
     evaluate_anomaly_detector_multi_seed,
     evaluate_rule_detector_multi_seed,

@@ -14,6 +14,79 @@ DEFAULT_FIGURES_ROOT = Path("results/figures")
 REPORT_READY_DIR_NAME = "report_ready"
 FINAL_STORY_TABLE_DIR_NAME = "final_story"
 FINAL_STORY_FIGURE_DIR_NAME = "final_story"
+FINAL_HEADLINE_COLUMNS = [
+    "story_stage",
+    "detector_label",
+    "detector_name",
+    "operating_point",
+    "precision",
+    "recall",
+    "f1",
+    "false_positive_rate",
+    "source_file",
+    "source_experiment",
+    "generated_at",
+]
+FINAL_MINIMUM_EVIDENCE_COLUMNS = [
+    "scenario_family",
+    "detector_label",
+    "operating_point",
+    "reliability_target",
+    "first_reliable_event_count",
+    "interpretation",
+    "source_file",
+    "generated_at",
+]
+FINAL_CTU_THREE_STAGE_COLUMNS = [
+    "story_stage",
+    "label_policy",
+    "detector_label",
+    "feature_path",
+    "compatibility_status",
+    "precision",
+    "recall",
+    "f1",
+    "false_positive_rate",
+    "source_file",
+    "generated_at",
+]
+FINAL_CTU_STORY_STAGES = [
+    "Synthetic direct transfer to CTU",
+    "CTU-native unsupervised evaluation",
+    "Within-CTU supervised evaluation",
+]
+FINAL_CTU_SUPERVISED_COLUMNS = [
+    "label_policy",
+    "detector_label",
+    "precision",
+    "recall",
+    "f1",
+    "false_positive_rate",
+    "tp",
+    "fp",
+    "tn",
+    "fn",
+    "interpretation",
+    "source_file",
+    "generated_at",
+]
+FINAL_FINDINGS_COLUMNS = [
+    "finding_order",
+    "story_stage",
+    "finding",
+    "evidence_artifact",
+    "interpretation",
+]
+ARTIFACT_MANIFEST_COLUMNS = [
+    "artifact_path",
+    "artifact_type",
+    "artifact_role",
+    "story_stage",
+    "source_file",
+    "source_experiment",
+    "generated_at",
+    "label_policy",
+]
 
 
 def build_report_artifacts(
@@ -820,7 +893,7 @@ def _write_final_headline_detector_comparison(
             }
         )
     output_path = final_table_dir / "headline_detector_comparison.csv"
-    _write_csv(output_path, rows)
+    _write_csv(output_path, rows, fieldnames=FINAL_HEADLINE_COLUMNS)
     return output_path
 
 
@@ -851,7 +924,7 @@ def _write_final_minimum_evidence_story_table(
             }
         )
     output_path = final_table_dir / "minimum_evidence_story_table.csv"
-    _write_csv(output_path, rows)
+    _write_csv(output_path, rows, fieldnames=FINAL_MINIMUM_EVIDENCE_COLUMNS)
     return output_path
 
 
@@ -915,8 +988,9 @@ def _write_final_ctu_three_stage_comparison(
                     generated_at=generated_at,
                 )
             )
+    rows.extend(_missing_ctu_stage_rows(rows, generated_at))
     output_path = final_table_dir / "ctu_three_stage_comparison.csv"
-    _write_csv(output_path, rows)
+    _write_csv(output_path, rows, fieldnames=FINAL_CTU_THREE_STAGE_COLUMNS)
     return output_path
 
 
@@ -946,6 +1020,30 @@ def _ctu_story_row(
     }
 
 
+def _missing_ctu_stage_rows(
+    rows: list[dict[str, Any]],
+    generated_at: str,
+) -> list[dict[str, Any]]:
+    present_stages = {row.get("story_stage", "") for row in rows}
+    return [
+        {
+            "story_stage": stage,
+            "label_policy": "conservative",
+            "detector_label": "",
+            "feature_path": "",
+            "compatibility_status": "source_missing",
+            "precision": "",
+            "recall": "",
+            "f1": "",
+            "false_positive_rate": "",
+            "source_file": "",
+            "generated_at": generated_at,
+        }
+        for stage in FINAL_CTU_STORY_STAGES
+        if stage not in present_stages
+    ]
+
+
 def _write_final_ctu_supervised_tradeoff_table(
     tables_root: Path,
     final_table_dir: Path,
@@ -973,7 +1071,7 @@ def _write_final_ctu_supervised_tradeoff_table(
             }
         )
     output_path = final_table_dir / "ctu_supervised_tradeoff_table.csv"
-    _write_csv(output_path, rows)
+    _write_csv(output_path, rows, fieldnames=FINAL_CTU_SUPERVISED_COLUMNS)
     return output_path
 
 
@@ -1039,7 +1137,7 @@ def _write_final_findings_table(final_table_dir: Path) -> Path:
         },
     ]
     output_path = final_table_dir / "final_findings_table.csv"
-    _write_csv(output_path, rows)
+    _write_csv(output_path, rows, fieldnames=FINAL_FINDINGS_COLUMNS)
     return output_path
 
 
@@ -1106,9 +1204,34 @@ def _write_artifact_manifest(
                     label_policy=_label_policy_for_artifact(path),
                 )
             )
+    rows.extend(_missing_manifest_role_rows(rows, generated_at))
     output_path = final_table_dir / "artifact_manifest.csv"
-    _write_csv(output_path, rows)
+    _write_csv(output_path, rows, fieldnames=ARTIFACT_MANIFEST_COLUMNS)
     return output_path
+
+
+def _missing_manifest_role_rows(
+    rows: list[dict[str, Any]],
+    generated_at: str,
+) -> list[dict[str, Any]]:
+    present_roles = {row.get("artifact_role", "") for row in rows}
+    missing_rows = []
+    for role in ("headline", "supporting", "diagnostic"):
+        if role in present_roles:
+            continue
+        missing_rows.append(
+            {
+                "artifact_path": "",
+                "artifact_type": "",
+                "artifact_role": role,
+                "story_stage": "Supporting evidence",
+                "source_file": "",
+                "source_experiment": "expected_artifact_missing",
+                "generated_at": generated_at,
+                "label_policy": "not_applicable",
+            }
+        )
+    return missing_rows
 
 
 def _manifest_row(
@@ -1419,9 +1542,14 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(csv_file))
 
 
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+def _write_csv(
+    path: Path,
+    rows: list[dict[str, Any]],
+    *,
+    fieldnames: list[str] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = _fieldnames_from_rows(rows)
+    fieldnames = fieldnames or _fieldnames_from_rows(rows)
     with path.open("w", encoding="utf-8", newline="") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()

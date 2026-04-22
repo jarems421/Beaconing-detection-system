@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import json
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
-import hashlib
-import json
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from beacon_detector.data import SyntheticTrafficConfig
 from beacon_detector.features import FlowFeatures
@@ -160,7 +161,10 @@ def _feature_fields() -> list[str]:
 
 
 def _safe_filename(value: str) -> str:
-    return "".join(character if character.isalnum() or character in "-_" else "_" for character in value)
+    return "".join(
+        character if character.isalnum() or character in "-_" else "_"
+        for character in value
+    )
 
 
 def _normalize(value):

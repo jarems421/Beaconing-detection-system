@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -14,14 +15,18 @@ class FlowKey:
     dst_ip: str
     dst_port: int
     protocol: ProtocolType
+    src_port: str | None = None
+    direction: str | None = None
 
     @classmethod
-    def from_event(cls, event: TrafficEvent) -> "FlowKey":
+    def from_event(cls, event: TrafficEvent) -> FlowKey:
         return cls(
             src_ip=event.src_ip,
             dst_ip=event.dst_ip,
             dst_port=event.dst_port,
             protocol=event.protocol,
+            src_port=event.src_port,
+            direction=event.direction,
         )
 
 
@@ -40,7 +45,7 @@ class Flow:
                 raise ValueError("All flow events must match the flow key.")
 
     @classmethod
-    def from_events(cls, events: list[TrafficEvent]) -> "Flow":
+    def from_events(cls, events: list[TrafficEvent]) -> Flow:
         if not events:
             raise ValueError("Cannot build a flow from an empty event list.")
         ordered_events = tuple(sorted(events, key=lambda event: event.timestamp))
@@ -68,11 +73,20 @@ class Flow:
 
     @property
     def label(self) -> TrafficLabel:
-        """Mark the flow as beaconing if any event in the flow is beaconing."""
+        """Return the flow label when all constituent events agree."""
 
-        if any(event.label == "beacon" for event in self.events):
-            return "beacon"
-        return "benign"
+        label_counts = self.label_counts
+        if len(label_counts) > 1:
+            raise ValueError("Mixed-label flows do not have a single safe label.")
+        return self.events[0].label
+
+    @property
+    def label_counts(self) -> dict[TrafficLabel, int]:
+        return dict(Counter(event.label for event in self.events))
+
+    @property
+    def has_mixed_labels(self) -> bool:
+        return len(self.label_counts) > 1
 
     @property
     def scenario_names(self) -> tuple[str, ...]:

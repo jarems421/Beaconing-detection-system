@@ -14,12 +14,12 @@ from beacon_detector.features import FlowFeatures
 
 from .cache import FeatureCacheConfig
 from .runner import (
+    SUPERVISED_TRAINING_SEEDS,
     EvaluationCase,
     EvaluationSummary,
     MultiSeedEvaluationSummary,
-    SUPERVISED_TRAINING_SEEDS,
-    build_supervised_training_features,
     build_multiseed_evaluation_grid,
+    build_supervised_training_features,
     evaluate_cases,
     summarize_metric_spread,
     summarize_prediction_records,
@@ -174,7 +174,9 @@ def evaluate_supervised_holdout_experiment(
         detector_type=detector_type,
         config=config,
     )
-    detector = lambda rows: detect_flow_feature_rows_supervised(rows, model=model)
+    def detector(rows):
+        return detect_flow_feature_rows_supervised(rows, model=model)
+
     summaries: list[EvaluationSummary] = []
     for seed_cases in build_multiseed_evaluation_grid(
         evaluation_seeds,

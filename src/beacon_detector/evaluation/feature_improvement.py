@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from typing import Any
 
 from beacon_detector.detection import SupervisedDetectorConfig
 
-from .cache import FeatureCacheConfig, FEATURE_SCHEMA_VERSION
+from .cache import FEATURE_SCHEMA_VERSION, FeatureCacheConfig
 from .runner import (
-    EvaluationCase,
     FROZEN_BASELINE_SEEDS,
-    MultiSeedEvaluationSummary,
     SUPERVISED_TRAINING_SEEDS,
+    EvaluationCase,
+    MultiSeedEvaluationSummary,
     build_default_evaluation_grid,
     evaluate_supervised_detector_multi_seed,
 )
@@ -317,7 +317,9 @@ def _write_metadata(
                 "feature_set": feature_set_name,
                 "threshold": threshold,
             }
-            for detector_name, feature_set_name, threshold in FEATURE_IMPROVEMENT_RF_OPERATING_POINTS
+            for detector_name, feature_set_name, threshold in (
+                FEATURE_IMPROVEMENT_RF_OPERATING_POINTS
+            )
         ],
         "feature_sets": list(feature_sets.values()),
         "standard_case_names": [case.name for case in standard_cases],

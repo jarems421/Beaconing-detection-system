@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import sys
+import unittest
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-import sys
-import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -15,8 +15,8 @@ from beacon_detector.data import (
     ShortcutOverlapLevel,
     SyntheticTrafficConfig,
     generate_combined_synthetic_dataset,
-    generate_time_size_jittered_beaconing,
     generate_synthetic_events,
+    generate_time_size_jittered_beaconing,
     save_events_to_csv,
 )
 from beacon_detector.data.types import PacketEvent

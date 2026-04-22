@@ -133,6 +133,8 @@ def load_ctu13_binetflow_events(
                 TrafficEvent(
                     timestamp=record.start_time,
                     src_ip=record.src_ip,
+                    src_port=record.src_port or None,
+                    direction=record.direction or None,
                     dst_ip=record.dst_ip,
                     dst_port=record.dst_port,
                     protocol=record.protocol,
@@ -182,7 +184,7 @@ def ctu13_feature_transfer_summary() -> list[dict[str, str]]:
         {
             "feature_group": "flow identity",
             "transfer_status": "direct",
-            "notes": "SrcAddr, DstAddr, Dport, and Proto map to the existing FlowKey.",
+            "notes": "SrcAddr, Sport, Dir, DstAddr, Dport, and Proto map to FlowKey.",
         },
         {
             "feature_group": "event_count",

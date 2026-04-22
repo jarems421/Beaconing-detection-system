@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import csv
-from pathlib import Path
+import tempfile
 import unittest
+from pathlib import Path
 
-from beacon_detector.evaluation.report_artifacts import build_report_artifacts
+from beacon_detector.evaluation.report_artifacts import (
+    build_final_story_artifacts,
+    build_report_artifacts,
+)
 
 
 class FinalStoryArtifactTests(unittest.TestCase):
@@ -98,6 +102,44 @@ class FinalStoryArtifactTests(unittest.TestCase):
         figure_dir = Path("results/figures/final_story")
         actual = {path.name for path in figure_dir.glob("*.png")}
         self.assertTrue(expected.issubset(actual))
+
+    def test_final_story_tables_keep_headers_and_roles_without_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tables_root = Path(temp_dir) / "tables"
+            figures_root = Path(temp_dir) / "figures"
+            build_final_story_artifacts(
+                tables_root=tables_root,
+                figures_root=figures_root,
+                generated_at="2026-01-01T00:00:00+00:00",
+            )
+
+            final_dir = tables_root / "final_story"
+            self.assertTrue(
+                {
+                    "story_stage",
+                    "detector_label",
+                    "precision",
+                    "recall",
+                    "f1",
+                    "false_positive_rate",
+                }.issubset(_columns(final_dir / "headline_detector_comparison.csv"))
+            )
+            manifest_roles = {
+                row["artifact_role"]
+                for row in _rows(final_dir / "artifact_manifest.csv")
+            }
+            self.assertTrue({"headline", "supporting", "diagnostic"}.issubset(manifest_roles))
+            story_stages = {
+                row["story_stage"]
+                for row in _rows(final_dir / "ctu_three_stage_comparison.csv")
+            }
+            self.assertTrue(
+                {
+                    "Synthetic direct transfer to CTU",
+                    "CTU-native unsupervised evaluation",
+                    "Within-CTU supervised evaluation",
+                }.issubset(story_stages)
+            )
 
 
 def _columns(path: Path) -> set[str]:

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import replace
-from pathlib import Path
 import json
 import sys
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from beacon_detector.data import ShortcutOverlapLevel, SyntheticTrafficConfig
 from beacon_detector.evaluation import (
+    SHORTCUT_STRESS_RF_OPERATING_POINTS,
     EvaluationCase,
     FeatureCacheConfig,
-    SHORTCUT_STRESS_RF_OPERATING_POINTS,
     build_default_evaluation_grid,
     build_shortcut_stress_suite,
     export_shortcut_stress_tables,

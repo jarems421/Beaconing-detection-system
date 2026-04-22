@@ -28,10 +28,10 @@ from .rules import (
 )
 from .statistical import (
     DEFAULT_STATISTICAL_FEATURES,
+    STATISTICAL_BASELINE_NAME,
     FeatureReference,
     StatisticalBaselineConfig,
     StatisticalBaselineModel,
-    STATISTICAL_BASELINE_NAME,
     StatisticalContribution,
     StatisticalDetectionResult,
     detect_flow_feature_rows_statistical,

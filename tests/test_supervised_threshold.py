@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import replace
-from pathlib import Path
 import sys
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from beacon_detector.data import SyntheticTrafficConfig
 from beacon_detector.evaluation import (
-    EvaluationCase,
-    FeatureCacheConfig,
     RANDOM_FOREST_THRESHOLD_FEATURE_SETS,
     RANDOM_FOREST_THRESHOLD_VALUES,
+    EvaluationCase,
+    FeatureCacheConfig,
     build_random_forest_threshold_feature_sets,
     evaluate_random_forest_threshold_sweep,
 )

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -19,12 +19,10 @@ from beacon_detector.detection import (
     fit_supervised_detector,
 )
 
-from .cache import FeatureCacheConfig, FEATURE_SCHEMA_VERSION
-from .metrics import calculate_classification_metrics
+from .cache import FEATURE_SCHEMA_VERSION, FeatureCacheConfig
 from .runner import (
-    EvaluationCase,
-    FROZEN_BASELINE_SEEDS,
     SUPERVISED_TRAINING_SEEDS,
+    EvaluationCase,
     build_case_feature_rows,
     build_default_evaluation_grid,
     build_multiseed_evaluation_grid,

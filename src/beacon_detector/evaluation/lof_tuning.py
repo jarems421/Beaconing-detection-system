@@ -9,9 +9,9 @@ from beacon_detector.detection import (
 
 from .cache import FeatureCacheConfig
 from .runner import (
+    QUICK_EVALUATION_SEEDS,
     EvaluationCase,
     MultiSeedEvaluationSummary,
-    QUICK_EVALUATION_SEEDS,
     evaluate_anomaly_detector_multi_seed,
 )
 

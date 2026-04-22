@@ -4,14 +4,14 @@ import argparse
 from dataclasses import replace
 
 from beacon_detector.detection import (
+    FROZEN_RULE_BASELINE_NAME,
+    FROZEN_RULE_BASELINE_THRESHOLDS,
     ISOLATION_FOREST_NAME,
     LOCAL_OUTLIER_FACTOR_NAME,
     LOGISTIC_REGRESSION_NAME,
     RANDOM_FOREST_NAME,
-    AnomalyDetectorConfig,
-    FROZEN_RULE_BASELINE_NAME,
-    FROZEN_RULE_BASELINE_THRESHOLDS,
     STATISTICAL_BASELINE_NAME,
+    AnomalyDetectorConfig,
     StatisticalBaselineConfig,
     SupervisedDetectorConfig,
     supervised_operating_point,
@@ -23,9 +23,9 @@ from beacon_detector.evaluation import (
     FeatureCacheConfig,
     build_default_evaluation_grid,
     build_quick_evaluation_grid,
+    evaluate_anomaly_detector_multi_seed,
     evaluate_rule_detector,
     evaluate_rule_detector_multi_seed,
-    evaluate_anomaly_detector_multi_seed,
     evaluate_statistical_detector_multi_seed,
     evaluate_supervised_detector_multi_seed,
     export_experiment_tables,

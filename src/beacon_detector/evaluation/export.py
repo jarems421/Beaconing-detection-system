@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import asdict
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from typing import Any
 
 from beacon_detector.detection import (
+    FROZEN_RULE_BASELINE_NAME,
+    FROZEN_RULE_BASELINE_THRESHOLDS,
     ISOLATION_FOREST_NAME,
     LOCAL_OUTLIER_FACTOR_NAME,
     LOGISTIC_REGRESSION_NAME,
     RANDOM_FOREST_NAME,
-    AnomalyDetectorConfig,
-    FROZEN_RULE_BASELINE_NAME,
-    FROZEN_RULE_BASELINE_THRESHOLDS,
     STATISTICAL_BASELINE_NAME,
+    AnomalyDetectorConfig,
     StatisticalBaselineConfig,
     SupervisedDetectorConfig,
 )
 
 from .runner import (
-    EvaluationCase,
     FROZEN_BASELINE_SEEDS,
+    EvaluationCase,
     MultiSeedEvaluationSummary,
     MultiSeedThresholdResult,
 )

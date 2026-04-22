@@ -41,7 +41,7 @@ def calculate_classification_metrics(
         raise ValueError("true_labels and predicted_labels must have the same length.")
 
     tp = fp = tn = fn = 0
-    for true_label, predicted_label in zip(true_labels, predicted_labels):
+    for true_label, predicted_label in zip(true_labels, predicted_labels, strict=True):
         is_positive = true_label == positive_label
         predicted_positive = predicted_label == positive_label
         if is_positive and predicted_positive:

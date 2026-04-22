@@ -1,35 +1,35 @@
 from __future__ import annotations
 
+import sys
+import unittest
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
-import sys
-import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from beacon_detector.data import NormalTrafficProfile, SyntheticTrafficConfig
 from beacon_detector.evaluation import (
-    EvaluationCase,
     FROZEN_BASELINE_SEEDS,
     OPERATING_POINT_THRESHOLDS,
     QUICK_EVALUATION_CASE_NAMES,
     QUICK_EVALUATION_SEEDS,
+    EvaluationCase,
     build_default_evaluation_grid,
     build_multiseed_evaluation_grid,
     build_quick_evaluation_grid,
     calculate_classification_metrics,
     evaluate_anomaly_detector,
     evaluate_anomaly_detector_multi_seed,
+    evaluate_rule_detector,
+    evaluate_rule_detector_multi_seed,
     evaluate_statistical_detector,
     evaluate_statistical_detector_multi_seed,
     evaluate_supervised_detector,
     evaluate_supervised_detector_multi_seed,
-    evaluate_rule_detector_multi_seed,
-    evaluate_rule_detector,
     score_distribution,
-    sweep_prediction_thresholds_multi_seed,
     sweep_prediction_thresholds,
+    sweep_prediction_thresholds_multi_seed,
     top_false_negatives,
     top_false_positives,
 )
@@ -305,8 +305,8 @@ class TestEvaluation(unittest.TestCase):
         case = build_quick_evaluation_grid()[0]
         summary = evaluate_rule_detector_multi_seed(seeds=[53], cases=[case])
 
-        from io import StringIO
         import contextlib
+        from io import StringIO
 
         output = StringIO()
         with contextlib.redirect_stdout(output):
