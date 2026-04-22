@@ -44,6 +44,7 @@ class Ctu13EvaluationConfig:
     output_dir: Path = Path("results/tables/ctu13")
     label_policy: Ctu13LabelPolicy = Ctu13LabelPolicy()
     max_rows: int | None = None
+    max_background_benign_feature_rows: int | None = None
     benign_reference_fraction: float = 0.5
     training_seeds: tuple[int, ...] = SUPERVISED_TRAINING_SEEDS
 
@@ -90,6 +91,7 @@ class Ctu13FeatureDataset:
     evaluation_rows: tuple[FlowFeatures, ...]
     parse_summary: Ctu13ParseSummary
     dropped_mixed_label_flow_count: int = 0
+    capped_background_benign_flow_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,6 +128,10 @@ def build_ctu13_feature_dataset(config: Ctu13EvaluationConfig) -> Ctu13FeatureDa
     clean_flows = [flow for flow in flows if not flow.has_mixed_labels]
     dropped_mixed_label_flow_count = len(flows) - len(clean_flows)
     feature_rows = tuple(extract_features_from_flows(clean_flows))
+    feature_rows, capped_background_benign_flow_count = _cap_background_benign_rows(
+        list(feature_rows),
+        max_background_benign_feature_rows=config.max_background_benign_feature_rows,
+    )
     reference_benign, evaluation_rows = _split_reference_and_evaluation_rows(
         list(feature_rows),
         benign_reference_fraction=config.benign_reference_fraction,
@@ -136,6 +142,7 @@ def build_ctu13_feature_dataset(config: Ctu13EvaluationConfig) -> Ctu13FeatureDa
         evaluation_rows=tuple(evaluation_rows),
         parse_summary=load_result.summary,
         dropped_mixed_label_flow_count=dropped_mixed_label_flow_count,
+        capped_background_benign_flow_count=capped_background_benign_flow_count,
     )
 
 
@@ -174,6 +181,7 @@ def run_ctu13_multi_scenario_evaluation(
     scenarios: list[Ctu13ScenarioInput],
     output_dir: str | Path = "results/tables/ctu13_multi",
     include_background_sensitivity: bool = True,
+    background_sensitivity_background_flow_cap: int | None = 10_000,
     benign_reference_fraction: float = 0.5,
     training_seeds: tuple[int, ...] = SUPERVISED_TRAINING_SEEDS,
     cache_config: FeatureCacheConfig | None = None,
@@ -186,11 +194,12 @@ def run_ctu13_multi_scenario_evaluation(
         policy_name="conservative",
         label_policy=conservative_policy,
         scenarios=scenarios,
-        output_dir=Path(output_dir),
-        benign_reference_fraction=benign_reference_fraction,
-        training_seeds=training_seeds,
-        cache_config=cache_config,
-    )
+            output_dir=Path(output_dir),
+            benign_reference_fraction=benign_reference_fraction,
+            training_seeds=training_seeds,
+            cache_config=cache_config,
+            max_background_benign_feature_rows=None,
+        )
 
     background_result = None
     if include_background_sensitivity:
@@ -203,6 +212,9 @@ def run_ctu13_multi_scenario_evaluation(
             benign_reference_fraction=benign_reference_fraction,
             training_seeds=training_seeds,
             cache_config=cache_config,
+            max_background_benign_feature_rows=(
+                background_sensitivity_background_flow_cap
+            ),
         )
 
     return Ctu13MultiScenarioEvaluationResult(
@@ -248,6 +260,7 @@ def _run_ctu13_policy_evaluation(
     benign_reference_fraction: float,
     training_seeds: tuple[int, ...],
     cache_config: FeatureCacheConfig | None,
+    max_background_benign_feature_rows: int | None,
 ) -> Ctu13PolicyEvaluationResult:
     scenario_results = []
     for scenario in scenarios:
@@ -259,6 +272,7 @@ def _run_ctu13_policy_evaluation(
                     output_dir=output_dir,
                     label_policy=label_policy,
                     max_rows=scenario.max_rows,
+                    max_background_benign_feature_rows=max_background_benign_feature_rows,
                     benign_reference_fraction=benign_reference_fraction,
                     training_seeds=training_seeds,
                 ),
@@ -456,6 +470,46 @@ def _split_reference_and_evaluation_rows(
     return reference_benign_rows, evaluation_rows
 
 
+def _cap_background_benign_rows(
+    feature_rows: list[FlowFeatures],
+    *,
+    max_background_benign_feature_rows: int | None,
+) -> tuple[tuple[FlowFeatures, ...], int]:
+    if max_background_benign_feature_rows is None:
+        return tuple(feature_rows), 0
+    if max_background_benign_feature_rows < 0:
+        raise ValueError("max_background_benign_feature_rows must be non-negative.")
+
+    background_rows = sorted(
+        [
+            row
+            for row in feature_rows
+            if row.label == "benign"
+            and (row.scenario_name or "").endswith(":ctu13_background")
+        ],
+        key=_stable_feature_row_key,
+    )
+    if len(background_rows) <= max_background_benign_feature_rows:
+        return tuple(feature_rows), 0
+
+    retained_background_keys = {
+        row.flow_key for row in background_rows[:max_background_benign_feature_rows]
+    }
+    retained_rows = [
+        row
+        for row in feature_rows
+        if not (
+            row.label == "benign"
+            and (row.scenario_name or "").endswith(":ctu13_background")
+            and row.flow_key not in retained_background_keys
+        )
+    ]
+    return (
+        tuple(sorted(retained_rows, key=_stable_feature_row_key)),
+        len(background_rows) - max_background_benign_feature_rows,
+    )
+
+
 def _stable_feature_row_key(row: FlowFeatures) -> str:
     flow_key = row.flow_key
     identity = "|".join(
@@ -577,11 +631,17 @@ def _write_metadata(output_dir: Path, result: Ctu13EvaluationResult) -> Path:
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
         "label_policy": asdict(result.config.label_policy),
         "max_rows": result.config.max_rows,
+        "max_background_benign_feature_rows": (
+            result.config.max_background_benign_feature_rows
+        ),
         "benign_reference_fraction": result.config.benign_reference_fraction,
         "training_seed_list": list(result.config.training_seeds),
         "parse_summary": asdict(result.dataset.parse_summary),
         "feature_row_count": len(result.dataset.feature_rows),
         "dropped_mixed_label_flow_count": result.dataset.dropped_mixed_label_flow_count,
+        "capped_background_benign_flow_count": (
+            result.dataset.capped_background_benign_flow_count
+        ),
         "reference_benign_flow_count": len(result.dataset.reference_benign_rows),
         "evaluation_flow_count": len(result.dataset.evaluation_rows),
         "detectors": [
@@ -682,6 +742,10 @@ def _write_label_policy_sensitivity(
             len(scenario_result.dataset.feature_rows)
             for scenario_result in policy_result.scenario_results
         )
+        capped_background_benign_flows = sum(
+            scenario_result.dataset.capped_background_benign_flow_count
+            for scenario_result in policy_result.scenario_results
+        )
         for detector_result in policy_result.detector_results:
             metrics = detector_result.metrics
             matrix = metrics.confusion_matrix
@@ -710,6 +774,7 @@ def _write_label_policy_sensitivity(
                     "parsed_events": parsed_events,
                     "skipped_rows": skipped_rows,
                     "feature_rows": feature_rows,
+                    "capped_background_benign_flows": capped_background_benign_flows,
                 }
             )
     _write_csv(path, rows)
@@ -806,6 +871,10 @@ def _write_multi_metadata(
                     scenario_result.dataset.dropped_mixed_label_flow_count
                     for scenario_result in policy_result.scenario_results
                 ),
+                "capped_background_benign_flow_count": sum(
+                    scenario_result.dataset.capped_background_benign_flow_count
+                    for scenario_result in policy_result.scenario_results
+                ),
                 "detectors": [
                     {
                         "detector_name": detector_result.detector_name,
@@ -821,6 +890,11 @@ def _write_multi_metadata(
             (
                 "Background-as-benign is a sensitivity analysis, not the headline result, "
                 "because CTU-13 Background traffic is ambiguous."
+            ),
+            (
+                "Background-as-benign direct-transfer runs cap retained CTU background "
+                "feature rows per scenario by default so the optional LOF sensitivity "
+                "analysis remains reproducible on a local workstation."
             ),
             (
                 "LOF uses a per-scenario held-out benign reference split; RF uses the existing "

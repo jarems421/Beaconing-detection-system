@@ -117,7 +117,13 @@ If you only want the primary conservative policy, add:
 ```
 
 The background sensitivity run is much heavier because it includes many ambiguous CTU Background
-flows as benign. Treat it as a sensitivity check, not the headline result.
+flows as benign. By default it keeps at most 10,000 CTU Background feature rows per scenario so the
+optional LOF sensitivity analysis completes locally. Treat it as a sensitivity check, not the
+headline result. To run without this cap, add:
+
+```powershell
+--background-sensitivity-background-flow-cap -1
+```
 
 Run the focused CTU feature-distribution diagnostic:
 

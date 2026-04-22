@@ -58,6 +58,15 @@ def main() -> None:
         action="store_true",
         help="For multi-scenario mode, skip the separate background-as-benign sensitivity run.",
     )
+    parser.add_argument(
+        "--background-sensitivity-background-flow-cap",
+        type=int,
+        default=10_000,
+        help=(
+            "Maximum CTU Background feature rows retained per scenario for the optional "
+            "background-as-benign sensitivity run. Use -1 for no cap."
+        ),
+    )
     args = parser.parse_args()
 
     if args.scenario:
@@ -66,6 +75,11 @@ def main() -> None:
             scenarios=scenarios,
             output_dir=args.output_dir,
             include_background_sensitivity=not args.skip_background_sensitivity,
+            background_sensitivity_background_flow_cap=(
+                None
+                if args.background_sensitivity_background_flow_cap < 0
+                else args.background_sensitivity_background_flow_cap
+            ),
         )
         written_paths = export_ctu13_multi_scenario_tables(result)
         _print_multi_summary(result, written_paths)

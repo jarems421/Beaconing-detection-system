@@ -145,6 +145,58 @@ class Ctu13AdapterTests(unittest.TestCase):
             {row.flow_key for row in second.reference_benign_rows},
         )
 
+    def test_background_sensitivity_can_cap_background_feature_rows(self) -> None:
+        rows = [
+            _ctu_row(
+                "2011/08/10 09:47:50.000000",
+                sport="1001",
+                label="flow=Background",
+            ),
+            _ctu_row(
+                "2011/08/10 09:47:55.000000",
+                sport="1002",
+                label="flow=Background",
+            ),
+            _ctu_row(
+                "2011/08/10 09:48:00.000000",
+                sport="1003",
+                label="flow=Background",
+            ),
+            _ctu_row(
+                "2011/08/10 09:48:05.000000",
+                sport="2001",
+                label="flow=From-Normal-CVUT",
+            ),
+            _ctu_row(
+                "2011/08/10 09:48:10.000000",
+                sport="3001",
+                label="flow=From-Botnet-V42",
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "sample.binetflow"
+            _write_binetflow_rows(path, rows)
+            dataset = build_ctu13_feature_dataset(
+                Ctu13EvaluationConfig(
+                    input_path=path,
+                    scenario_name="ctu13_test",
+                    label_policy=Ctu13LabelPolicy(include_background_as_benign=True),
+                    max_background_benign_feature_rows=1,
+                )
+            )
+
+        self.assertEqual(dataset.capped_background_benign_flow_count, 2)
+        self.assertEqual(
+            sum(
+                1
+                for row in dataset.feature_rows
+                if (row.scenario_name or "").endswith(":ctu13_background")
+            ),
+            1,
+        )
+        self.assertTrue(any(row.label == "beacon" for row in dataset.feature_rows))
+
     def test_feature_transfer_summary_documents_schema_mismatch(self) -> None:
         rows = ctu13_feature_transfer_summary()
         statuses = {row["transfer_status"] for row in rows}
@@ -169,6 +221,11 @@ class Ctu13AdapterTests(unittest.TestCase):
             )
 
         self.assertEqual(run_single.call_count, 4)
+        called_configs = [call.args[0] for call in run_single.call_args_list]
+        self.assertEqual(
+            [config.max_background_benign_feature_rows for config in called_configs],
+            [None, None, 10_000, 10_000],
+        )
         self.assertEqual(result.conservative_result.policy_name, "conservative")
         self.assertIsNotNone(result.background_sensitivity_result)
         self.assertFalse(

@@ -177,6 +177,10 @@ Run CTU direct-transfer evaluation:
 python -m beacon_detector.evaluation.run_ctu13 --scenario ctu13_scenario_5=data/public/ctu13/scenario_5/capture20110815-2.binetflow --scenario ctu13_scenario_7=data/public/ctu13/scenario_7/capture20110816-2.binetflow --scenario ctu13_scenario_11=data/public/ctu13/scenario_11/capture20110818-2.binetflow --output-dir results/tables/ctu13_multi
 ```
 
+The optional background-as-benign sensitivity path caps retained CTU Background feature rows per
+scenario by default so it can complete on a local workstation; the conservative policy remains the
+headline CTU direct-transfer result.
+
 Run CTU-native feature-path comparison:
 
 ```powershell
