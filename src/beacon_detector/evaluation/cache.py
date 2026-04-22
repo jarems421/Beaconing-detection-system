@@ -176,7 +176,7 @@ def _normalize(value):
         return _normalize(asdict(value))
     if isinstance(value, dict):
         return {key: _normalize(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return [_normalize(item) for item in value]
     return value
 
