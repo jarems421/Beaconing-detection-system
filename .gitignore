@@ -21,11 +21,13 @@ env/
 
 # Test/runtime scratch outputs
 tests/.tmp/
+models/
 
 # Large or reproducible data artifacts
 data/public/**/*.binetflow
 results/cache/
 results/scored/
+results/operational/
 
 # Keep the curated/report artifacts, but avoid noisy ad-hoc local experiment exports by default.
 results/tables/*

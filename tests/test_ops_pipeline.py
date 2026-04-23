@@ -164,6 +164,31 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertIn("Operational scoring complete", completed.stdout)
         self.assertTrue((output_dir / "out" / "scored_flows.csv").exists())
 
+    def test_checked_in_operational_example_scores_end_to_end(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_checked_in_example")
+        score_path = Path("data/operational/example_score.csv")
+        train_path = Path("data/operational/example_train.csv")
+
+        self.assertTrue(validate_normalized_csv(score_path).is_valid)
+        self.assertTrue(validate_normalized_csv(train_path, require_label=True).is_valid)
+
+        training_outputs = train_random_forest_model(
+            train_paths=[train_path],
+            output_dir=output_dir / "model",
+        )
+        outputs = run_batch_score(
+            input_path=score_path,
+            input_format="normalized-csv",
+            output_dir=output_dir / "out",
+            model_artifact_path=training_outputs.model_dir,
+            threshold_profile="balanced",
+        )
+
+        self.assertTrue(outputs.alerts_csv.exists())
+        self.assertTrue(outputs.scored_flows_csv.exists())
+        self.assertTrue(outputs.run_summary_json.exists())
+        self.assertTrue(outputs.report_md.exists())
+
     def test_cli_train_model_writes_artifact(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_cli_train")
         train_path = output_dir / "train.csv"

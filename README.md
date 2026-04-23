@@ -107,6 +107,7 @@ those native features have discriminative power under scenario-aware splits.
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
 | `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
+| `docs/operational_example.md` | Tiny end-to-end operational CLI example using checked-in CSV fixtures. |
 | `docs/project_walkthrough.md` | Guided project walkthrough. |
 | `docs/report_draft.md` | More complete technical writeup. |
 | `results/figures/final_story/` | Headline figures to view first. |
@@ -246,6 +247,12 @@ Score a NetFlow/IPFIX-style CSV:
 
 ```powershell
 beacon-ops score --input data/flows/netflow.csv --input-format netflow-ipfix-csv --output-dir results/operational/netflow_run_001
+```
+
+Run the checked-in end-to-end example:
+
+```powershell
+beacon-ops score --input data/operational/example_score.csv --input-format normalized-csv --output-dir results/operational/example_rules
 ```
 
 Without `--model-artifact`, scoring uses the conservative rules path. With `--model-artifact`,
