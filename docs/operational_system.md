@@ -67,6 +67,12 @@ Score a checked-in fixture:
 beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
 ```
 
+Open the checked-in visual demo page:
+
+```text
+docs/operational_demo.html
+```
+
 The NetFlow/IPFIX adapter accepts common CSV aliases for:
 
 | Normalized field | Common aliases |

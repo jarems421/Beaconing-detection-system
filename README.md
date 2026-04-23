@@ -116,6 +116,7 @@ those native features have discriminative power under scenario-aware splits.
 | --- | --- |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
+| `docs/operational_demo.md` | Real CLI demo flow and static visual demo entry point. |
 | `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
 | `docs/operational_example.md` | Tiny end-to-end operational CLI example using checked-in CSV fixtures. |
 | `docs/project_walkthrough.md` | Guided project walkthrough. |
@@ -263,6 +264,12 @@ Run one exact checked-in NetFlow/IPFIX example:
 
 ```powershell
 beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
+```
+
+Open the checked-in visual demo page:
+
+```text
+docs/operational_demo.html
 ```
 
 Run the checked-in end-to-end example:
