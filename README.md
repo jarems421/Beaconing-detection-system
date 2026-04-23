@@ -10,6 +10,11 @@ pipeline.
 **Headline result:** strong synthetic performance does not automatically transfer to public flow
 data. Minimum evidence requirements and schema/domain shift remain the core limits.
 
+## Branch Guide
+
+- `operational-system`: operational CLI branch for normalized CSV, Zeek, and NetFlow/IPFIX ingestion, hybrid scoring, manifests, diagnostics, and CI-tested workflows.
+- `main`: preserved research branch for the finalized comparative study, benchmark narrative, and research-first framing.
+
 ## Why This Repo
 
 - Real operational ingestion path: normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV.
