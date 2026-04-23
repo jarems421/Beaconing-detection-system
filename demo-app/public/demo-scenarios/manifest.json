@@ -4,7 +4,7 @@
     {
       "id": "suspicious-netflow",
       "label": "Suspicious NetFlow/IPFIX run",
-      "description": "A checked-in NetFlow/IPFIX fixture with a strong periodic candidate plus one skipped unsupported row.",
+      "description": "A sample network-flow file where one machine talks to the same destination at very regular intervals. One row is skipped because it uses an unsupported protocol.",
       "category": "suspicious",
       "input_format": "netflow-ipfix-csv",
       "input_name": "netflow_demo.csv",
@@ -17,7 +17,7 @@
     {
       "id": "low-signal-zeek",
       "label": "Low-signal Zeek conn.log run",
-      "description": "A short Zeek conn.log example that exercises ingestion and scoring with limited evidence and no dominant alert.",
+      "description": "A short Zeek example with only a little evidence. It still scores, but the result is much less convincing than the suspicious sample.",
       "category": "low-signal",
       "input_format": "zeek-conn",
       "input_name": "zeek_parity.conn.log",
@@ -30,7 +30,7 @@
     {
       "id": "messy-netflow",
       "label": "Messy NetFlow/IPFIX run",
-      "description": "A small input with one unsupported protocol row to surface skip reasons and limited evidence handling.",
+      "description": "A small messy input that shows how the system handles incomplete or unsupported rows without failing silently.",
       "category": "failure-mode",
       "input_format": "netflow-ipfix-csv",
       "input_name": "netflow_unsupported_protocol.csv",

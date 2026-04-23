@@ -28,7 +28,10 @@ export default function DemoWorkspace({ initialData, manifest }) {
   const [backendState, setBackendState] = useState(
     process.env.NEXT_PUBLIC_DEMO_API_BASE_URL
       ? { status: "checking", message: "Checking live scoring service..." }
-      : { status: "unavailable", message: "Live scoring is not configured for this deployment." }
+      : {
+          status: "unavailable",
+          message: "Live scoring is not configured for this deployment, but the sample runs still work.",
+        }
   );
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_DEMO_API_BASE_URL || "";
@@ -51,7 +54,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
         }
         setBackendState({
           status: "ready",
-          message: `Live scoring ready (${payload.available_input_formats.join(", ")})`,
+          message: `Live scoring is available for ${payload.available_input_formats.join(", ")}.`,
         });
       })
       .catch(() => {
@@ -60,7 +63,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
         }
         setBackendState({
           status: "unavailable",
-          message: "Live scoring is unavailable right now. Sample scenarios still work.",
+          message: "Live scoring is unavailable right now. The sample scenarios still work.",
         });
       });
     return () => {
@@ -180,10 +183,10 @@ export default function DemoWorkspace({ initialData, manifest }) {
       <section className="workspace-header panel">
         <div className="workspace-header-main">
           <div className="eyebrow">Interactive inspection workspace</div>
-          <h1 className="workspace-title">Sample runs and live scoring in one place.</h1>
+          <h1 className="workspace-title">See what the system found and why it found it.</h1>
           <p className="workspace-subtitle">
-            Switch between checked-in scenarios or upload a small flow file, then inspect the
-            same alerts, diagnostics, artifacts, and score interpretation surfaces.
+            Pick a sample run or upload a small file. The page will show the suspicious flows, the
+            reasons they were flagged, the rows that were skipped, and the files produced by the run.
           </p>
           <div className="workspace-status-row">
             <span className={`badge backend-${backendState.status}`}>{backendLabel(backendState)}</span>
@@ -199,7 +202,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
             <div className="section-head">
               <div>
                 <h2>Sample scenario</h2>
-                <p>Swap between checked-in runs without changing the workspace shape.</p>
+                <p>Switch between prepared examples without changing how the page works.</p>
               </div>
             </div>
             <label className="control-label" htmlFor="scenario-select">
@@ -227,7 +230,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
             <div className="section-head">
               <div>
                 <h2>Upload and score</h2>
-                <p>Small-file live scoring through the separate Python service.</p>
+                <p>Upload a small file and score it with the same backend used for the sample runs.</p>
               </div>
             </div>
             <label className="control-label" htmlFor="input-format">
@@ -299,12 +302,12 @@ export default function DemoWorkspace({ initialData, manifest }) {
             <div className="section-head">
               <div>
                 <h2>Alerts</h2>
-                <p>Ranked suspicious flows from the active result payload.</p>
+                <p>The flows that look most suspicious in this run.</p>
               </div>
             </div>
             <input
               className="search-input"
-              placeholder="Search IP, protocol, reason..."
+              placeholder="Search IP address, protocol, or reason..."
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -323,7 +326,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
                         {alert.src} {"->"} {alert.dst}:{alert.port}/{alert.proto}
                       </div>
                       <div className="alert-meta">
-                        {alert.event_count} events | RF {Number(alert.rf_score).toFixed(3)}
+                        {alert.event_count} connections | model {Number(alert.rf_score).toFixed(3)}
                       </div>
                       <div className="badge-row">
                         <SeverityBadge severity={alert.severity} />
@@ -333,9 +336,9 @@ export default function DemoWorkspace({ initialData, manifest }) {
                   );
                 })
               ) : (
-                <div className="empty-state">
-                  No alerts exceeded the active policy for this run. Diagnostics and raw outputs are
-                  still available below.
+                  <div className="empty-state">
+                  No flow crossed the current alert cutoff in this run. You can still inspect the
+                  diagnostics and raw outputs below.
                 </div>
               )}
             </div>
@@ -347,7 +350,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
             <div className="section-head">
               <div>
                 <h2>Selected alert</h2>
-                <p>The highest-value explanation surface for the current run.</p>
+                <p>The clearest plain-language explanation for the current run.</p>
               </div>
             </div>
 
@@ -363,16 +366,19 @@ export default function DemoWorkspace({ initialData, manifest }) {
                     <div className="badge-row">
                       <SeverityBadge severity={selectedAlert.severity} />
                       <span className="badge">{data.scenario.profile} profile</span>
-                      <span className="badge">{selectedAlert.mode}</span>
+                      <span className="badge">{modeLabel(selectedAlert.mode)}</span>
                     </div>
                   </div>
 
                   <div className="score-stack">
                     <ScoreTile
-                      label="Hybrid score"
+                      label="Combined score"
                       value={Number(selectedAlert.hybrid_score).toFixed(3)}
                     />
-                    <ScoreTile label="RF score" value={Number(selectedAlert.rf_score).toFixed(3)} />
+                    <ScoreTile
+                      label="Model score"
+                      value={Number(selectedAlert.rf_score).toFixed(3)}
+                    />
                     <ScoreTile
                       label="Rule score"
                       value={
@@ -386,20 +392,28 @@ export default function DemoWorkspace({ initialData, manifest }) {
 
                 <div className="detail-columns">
                   <div className="data-block">
+                    <div className="detail-label">In plain English</div>
+                    <div className="note-list plain-note-list">
+                      {plainEnglishSummary(selectedAlert).map((line) => (
+                        <NoteRow key={line} text={line} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="data-block">
                     <KeyValue label="Event count" value={selectedAlert.event_count} />
                     <KeyValue label="Total bytes" value={selectedAlert.bytes} />
-                    <KeyValue label="Source ports" value={selectedAlert.src_ports_seen} />
+                    <KeyValue label="Source ports seen" value={selectedAlert.src_ports_seen} />
                     <KeyValue
-                      label="Predicted label"
-                      value={selectedFlowBreakdown?.predicted_label || "n/a"}
+                      label="Final decision"
+                      value={labelText(selectedFlowBreakdown?.predicted_label || "n/a")}
                     />
                   </div>
                   <div className="data-block">
-                    <div className="detail-label">Top model features</div>
+                    <div className="detail-label">What the model paid attention to</div>
                     <div className="token-row">
                       {selectedAlert.model_features.map((feature) => (
                         <span className="token" key={feature}>
-                          {feature}
+                          {humanizeFeature(feature)}
                         </span>
                       ))}
                     </div>
@@ -407,11 +421,11 @@ export default function DemoWorkspace({ initialData, manifest }) {
                 </div>
 
                 <div className="reason-section">
-                  <div className="detail-label">Triggered reasons</div>
+                  <div className="detail-label">Why this flow was flagged</div>
                   <div className="token-row">
                     {selectedAlert.reasons.map((reason) => (
                       <span className="token" key={reason}>
-                        {reason}
+                        {humanizeReason(reason)}
                       </span>
                     ))}
                   </div>
@@ -428,11 +442,11 @@ export default function DemoWorkspace({ initialData, manifest }) {
           <div className="workspace-lower-grid">
             <div className="panel">
               <div className="section-head">
-                <div>
-                  <h2>Diagnostics</h2>
-                  <p>Accepted rows, skipped rows, and recorded reasons.</p>
-                </div>
+              <div>
+                <h2>Diagnostics</h2>
+                <p>What was accepted, what was skipped, and why.</p>
               </div>
+            </div>
               <div className="diagnostic-topline">
                 <DiagnosticPill label="Input rows" value={String(metrics["Input rows"] || 0)} />
                 <DiagnosticPill
@@ -460,16 +474,16 @@ export default function DemoWorkspace({ initialData, manifest }) {
 
             <div className="panel">
               <div className="section-head">
-                <div>
-                  <h2>Interpretation</h2>
-                  <p>Conservative wording stays attached to every result.</p>
-                </div>
+              <div>
+                <h2>Interpretation</h2>
+                <p>How to read these results without overclaiming.</p>
               </div>
-              <div className="note-list">
-                <NoteRow text="RF score is a ranking signal, not a calibrated probability." />
-                <NoteRow text="Alerts are triage candidates, not ground truth." />
-                <NoteRow text="Unsupported protocols are skipped and recorded in the run summary." />
-                <NoteRow text="Low-evidence or incomplete inputs can reduce what the workflow can infer." />
+            </div>
+            <div className="note-list">
+                <NoteRow text="The model score is a ranking signal. Higher means more suspicious, but it is not a probability." />
+                <NoteRow text="A flagged flow is a candidate for review, not proof of beaconing." />
+                <NoteRow text="Rows that use unsupported protocols are skipped and counted openly instead of disappearing." />
+                <NoteRow text="Small or messy inputs can make the result less certain, even when the page still shows a score." />
               </div>
             </div>
           </div>
@@ -478,7 +492,7 @@ export default function DemoWorkspace({ initialData, manifest }) {
             <div className="section-head">
               <div>
                 <h2>Artifacts from the run</h2>
-                <p>Raw outputs from the current sample or uploaded result.</p>
+                <p>The actual files produced by this run.</p>
               </div>
             </div>
             <div className="tab-row">
@@ -499,9 +513,9 @@ export default function DemoWorkspace({ initialData, manifest }) {
           <div className="workspace-lower-grid">
             <div className="panel">
               <div className="section-head">
-                <div>
-                  <h2>Command details</h2>
-                  <p>Overview only shows the score command. Full details live here.</p>
+              <div>
+                <h2>Command details</h2>
+                  <p>The exact commands behind the sample run.</p>
                 </div>
               </div>
               <div className="note-list">
@@ -518,16 +532,16 @@ export default function DemoWorkspace({ initialData, manifest }) {
 
             <div className="panel">
               <div className="section-head">
-                <div>
-                  <h2>Technical notes</h2>
-                  <p>Why the workflow is more than UI polish.</p>
+              <div>
+                  <h2>How this works</h2>
+                  <p>Short explanations of the main design choices.</p>
                 </div>
               </div>
               <div className="note-list">
-                <NoteRow text="Sample scenarios and uploaded runs render through the same result model." />
-                <NoteRow text="Grouped-validation-backed threshold profiles come from out-of-fold scores." />
-                <NoteRow text="Ingestion diagnostics record loaded rows, skipped rows, and skip reasons." />
-                <NoteRow text="The upload service wraps the existing operational scorer instead of duplicating logic." />
+                <NoteRow text="Sample runs and uploaded runs are shown through the same page layout, so the demo is not a separate mock path." />
+                <NoteRow text="The alert cutoff comes from held-out validation results rather than being chosen by hand for the same rows used to fit the model." />
+                <NoteRow text="The page always keeps the ingestion counts and skip reasons visible so you can see whether the input was clean." />
+                <NoteRow text="The upload service uses the existing scorer from the project instead of re-implementing a second version just for the demo." />
               </div>
             </div>
           </div>
@@ -593,4 +607,75 @@ function SidebarStat({ label, value }) {
 
 function formatReason(reason) {
   return reason.replaceAll("_", " ");
+}
+
+function humanizeReason(reason) {
+  const normalized = String(reason).toLowerCase();
+  if (normalized.includes("inter-arrival") || normalized.includes("periodic")) {
+    return "The timing between connections is unusually regular.";
+  }
+  if (normalized.includes("size cv") || normalized.includes("constant payload")) {
+    return "The amount of data sent each time is very similar.";
+  }
+  if (normalized.includes("flow duration")) {
+    return "The repeated pattern lasts long enough to be worth investigating.";
+  }
+  if (normalized.includes("random forest score")) {
+    return "The trained model also ranked this flow above its alert cutoff.";
+  }
+  if (normalized.includes("sustained_repeated_communication")) {
+    return "The same source and destination keep talking over time.";
+  }
+  return reason.replaceAll("_", " ");
+}
+
+function humanizeFeature(feature) {
+  const labels = {
+    trimmed_interarrival_cv: "Consistency of the timing between connections",
+    interarrival_within_20pct_median_fraction: "How many gaps stay close to the usual gap",
+    interarrival_within_10pct_median_fraction: "How tightly the timing stays around one interval",
+    interarrival_median_absolute_percentage_deviation: "How much the timing varies around its middle value",
+    periodicity_score: "Overall regularity of the pattern",
+    inter_arrival_cv: "Variation in time between connections",
+    near_median_interarrival_fraction: "Share of timings close to the typical timing",
+    dominant_interval_fraction: "How strongly one timing interval dominates",
+  };
+  return labels[feature] || feature.replaceAll("_", " ");
+}
+
+function plainEnglishSummary(alert) {
+  const lines = [];
+  if (alert.reasons.some((reason) => /inter-arrival|periodic/i.test(reason))) {
+    lines.push("This host is contacting the same destination at a very steady rhythm.");
+  }
+  if (alert.reasons.some((reason) => /size cv|constant payload/i.test(reason))) {
+    lines.push("Each contact looks similar in size, which can happen in automated check-ins.");
+  }
+  if (alert.reasons.some((reason) => /random forest score/i.test(reason))) {
+    lines.push("The trained model independently ranks this flow as suspicious as well.");
+  }
+  if (!lines.length) {
+    lines.push("This flow was kept for review because it still ranked above the active cutoff.");
+  }
+  return lines;
+}
+
+function modeLabel(mode) {
+  if (mode === "rules_random_forest_hybrid") {
+    return "rules + model";
+  }
+  if (mode === "rules_only") {
+    return "rules only";
+  }
+  return mode;
+}
+
+function labelText(value) {
+  if (value === "beacon") {
+    return "Flagged for review";
+  }
+  if (value === "benign") {
+    return "Not flagged";
+  }
+  return value;
 }
