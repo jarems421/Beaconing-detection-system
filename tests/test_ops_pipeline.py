@@ -575,6 +575,8 @@ class OperationalPipelineTests(unittest.TestCase):
             "RF scores are uncalibrated model scores.",
             score_report,
         )
+        self.assertIn("random forest score", score_report)
+        self.assertNotIn("random forest probability", score_report)
 
     def test_threshold_profiles_keep_expected_validation_tradeoff_order(self) -> None:
         profiles = threshold_profile_metadata(

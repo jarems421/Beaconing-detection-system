@@ -671,7 +671,7 @@ def _alert_reasons(
     reasons = list(result.triggered_reasons)
     if supervised_result is not None and supervised_result.predicted_label == "beacon":
         reasons.append(
-            "random forest probability "
+            "random forest score "
             f"{supervised_result.score:.3f} >= {supervised_result.threshold:.3f}"
         )
     return " | ".join(reasons)
