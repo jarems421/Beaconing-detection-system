@@ -15,8 +15,9 @@ export default function DemoWorkspaceDiagnostics() {
   return (
     <WorkspaceShell
       active="diagnostics"
+      stepLabel="Step 4 of 5"
       title="Diagnostics"
-      description="This page is for run health: what was read, what was skipped, and where the limits of the run show up."
+      description="This is the run-health page. Use it to see how much of the input was usable and whether anything important was skipped."
       resultData={resultData}
     >
       {!resultData ? (
@@ -40,7 +41,7 @@ export default function DemoWorkspaceDiagnostics() {
               <div className="note-list">
                 <NoteRow text="Input rows is the total number of rows the reader saw in the file." />
                 <NoteRow text="Loaded events is the number of rows that were usable after normalization." />
-                <NoteRow text="Skipped rows is the number of rows that could not be used and were counted openly." />
+                <NoteRow text="Skipped rows is the number of rows that could not be used and were counted openly instead of being hidden." />
               </div>
             </div>
           </details>

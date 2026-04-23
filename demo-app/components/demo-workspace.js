@@ -150,20 +150,21 @@ export default function DemoWorkspace({ manifest }) {
   return (
     <WorkspaceShell
       active="run"
-      title="Start a run, then inspect it one page at a time."
-      description="Use this page to launch a built-in input or score your own file. The deeper pages stay quieter: results on one page, explanation on another, diagnostics on another, files on another."
+      stepLabel="Step 1 of 5"
+      title="Start here"
+      description="Pick one of the included inputs or upload your own small file. Once the run finishes, the rest of the workspace breaks it into separate pages instead of throwing everything at you at once."
       resultData={null}
     >
       <section className="workspace-run-grid">
         <form className="panel workspace-control-card" onSubmit={handleBuiltInRun}>
           <div className="section-head">
             <div>
-              <h2>Run a built-in input</h2>
-              <p>Start with one of the checked-in files and step through the result afterward.</p>
+              <h2>Run one of the included inputs</h2>
+              <p>Good for a quick walkthrough. You click run, then the workspace opens the result pages.</p>
             </div>
           </div>
           <label className="control-label" htmlFor="scenario-select">
-            Built-in input
+            Included input
           </label>
           <select
             id="scenario-select"
@@ -211,7 +212,7 @@ export default function DemoWorkspace({ manifest }) {
           <div className="section-head">
             <div>
               <h2>Run your own file</h2>
-              <p>Upload a small file and send it through the live demo service.</p>
+              <p>Good if you want to test the pipeline on your own small file instead of an included one.</p>
             </div>
           </div>
           <label className="control-label" htmlFor="upload-input-format">
@@ -266,21 +267,21 @@ export default function DemoWorkspace({ manifest }) {
           <div className="section-head">
             <div>
               <h2>What happens next</h2>
-              <p>Each step gets its own page so the workspace stays readable.</p>
+              <p>After the run, you move through the result in smaller pages.</p>
             </div>
           </div>
           <div className="workflow-strip overview-strip">
             <WorkflowStep
               title="1. Results"
-              body="See what was flagged without the raw file previews getting in the way."
+              body="See the main finding first, without the raw files getting in the way."
             />
             <WorkflowStep
               title="2. Explanation"
-              body="Read the plain-English reasons and what the model paid attention to."
+              body="Read the plain-English reasons and the model signals behind the alert."
             />
             <WorkflowStep
               title="3. Diagnostics and files"
-              body="Open the skip reasons and raw outputs only when you actually want them."
+              body="Open the skipped-row details and raw outputs only when you actually need them."
             />
           </div>
         </div>
@@ -289,19 +290,19 @@ export default function DemoWorkspace({ manifest }) {
           <div className="section-head">
             <div>
               <h2>Current status</h2>
-              <p>Helpful context before you run anything.</p>
+              <p>This tells you whether live uploads are available and whether you already have a run loaded.</p>
             </div>
           </div>
           <div className="workspace-status-row">
             <span className={`badge backend-${backendState.status}`}>{backendLabel(backendState)}</span>
-            <span className="badge">built-in inputs and uploads share one result format</span>
+            <span className="badge">included inputs and uploads use the same result view</span>
           </div>
           {statusMessage ? <div className="status-banner">{statusMessage}</div> : null}
           {resultData ? (
             <div className="resume-card">
               <div className="detail-label">Last loaded result</div>
               <h3>{currentResultLabel}</h3>
-              <p>You can jump back into the latest run without starting over.</p>
+              <p>You can jump back into the latest run without starting from scratch.</p>
               <Link className="primary-link" href="/workspace/results">
                 Open last result
               </Link>

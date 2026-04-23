@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 const workspaceLinks = [
-  { href: "/workspace", key: "run", label: "Run" },
-  { href: "/workspace/results", key: "results", label: "Results" },
-  { href: "/workspace/explanation", key: "explanation", label: "Explanation" },
-  { href: "/workspace/diagnostics", key: "diagnostics", label: "Diagnostics" },
-  { href: "/workspace/files", key: "files", label: "Files" },
+  { href: "/workspace", key: "run", label: "1. Run", hint: "pick an input" },
+  { href: "/workspace/results", key: "results", label: "2. Results", hint: "see what rose to the top" },
+  { href: "/workspace/explanation", key: "explanation", label: "3. Explanation", hint: "read the why" },
+  { href: "/workspace/diagnostics", key: "diagnostics", label: "4. Diagnostics", hint: "check input health" },
+  { href: "/workspace/files", key: "files", label: "5. Files", hint: "open the raw outputs" },
 ];
 
 export const previewOrder = [
@@ -18,7 +18,7 @@ export const previewOrder = [
   ["training_report_md", "training_report.md"],
 ];
 
-export function WorkspaceShell({ active, title, description, resultData, children }) {
+export function WorkspaceShell({ active, stepLabel, title, description, resultData, children }) {
   return (
     <main className="page-shell">
       <div className="top-nav">
@@ -31,7 +31,7 @@ export function WorkspaceShell({ active, title, description, resultData, childre
 
       <section className="panel workspace-view-header">
         <div>
-          <div className="eyebrow">Workspace</div>
+          <div className="eyebrow">{stepLabel || "Workspace"}</div>
           <h1 className="workspace-title workspace-view-title">{title}</h1>
           <p className="workspace-subtitle">{description}</p>
         </div>
@@ -55,7 +55,8 @@ export function WorkspaceShell({ active, title, description, resultData, childre
             href={item.href}
             key={item.key}
           >
-            {item.label}
+            <span className="workspace-subnav-title">{item.label}</span>
+            <span className="workspace-subnav-hint">{item.hint}</span>
           </Link>
         ))}
       </nav>

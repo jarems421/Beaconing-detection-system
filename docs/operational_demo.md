@@ -1,7 +1,7 @@
 # Operational Demo
 
 Real demo workflow backed by checked-in scenarios, the Next.js workspace, and the same operational
-scoring path used elsewhere in the branch.
+scoring path used by the batch scorer.
 
 ## Commands
 
@@ -20,8 +20,12 @@ demo-app/
 
 It has two layers:
 
-- `/` for the high-level overview
-- `/workspace` for alert investigation, diagnostics, raw outputs, and upload scoring
+- `/` for the short project overview
+- `/workspace` for starting a run
+- `/workspace/results` for the main finding
+- `/workspace/explanation` for the plain-English explanation
+- `/workspace/diagnostics` for skipped rows and run health
+- `/workspace/files` for raw outputs and command details
 
 To run locally:
 
@@ -51,7 +55,7 @@ Open:
 docs/operational_demo.html
 ```
 
-The page renders checked-in demo data generated from the operational workflow:
+This older page renders checked-in demo data generated from the operational workflow:
 
 - the command sequence
 - alerts with reasons

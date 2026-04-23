@@ -35,8 +35,9 @@ export default function DemoWorkspaceResults() {
   return (
     <WorkspaceShell
       active="results"
+      stepLabel="Step 2 of 5"
       title="Results"
-      description="This page stays focused on the outcome of the run: what was flagged, what rose to the top, and a small snapshot of the run health."
+      description="This is the quick-answer page. Start here if you want to know what the run flagged before you open the deeper explanation or file views."
       resultData={resultData}
     >
       {!resultData ? (
@@ -93,15 +94,15 @@ export default function DemoWorkspaceResults() {
               <summary>Results summary</summary>
               <div className="details-body">
                 <div className="result-summary-banner">
-                  <div>
-                    <div className="detail-label">Run label</div>
-                    <h2>{currentResultLabel}</h2>
-                    <p>
-                      This is the main result view. It shows the most suspicious flow first, then
-                      lets you drill down only if you need more detail.
+                <div>
+                  <div className="detail-label">Run label</div>
+                  <h2>{currentResultLabel}</h2>
+                  <p>
+                      This page puts the strongest finding first, then leaves the longer
+                      explanation and raw files for later pages.
                     </p>
-                  </div>
                 </div>
+              </div>
                 <SelectedAlertCard
                   resultData={resultData}
                   selectedAlert={selectedAlert}
@@ -125,7 +126,7 @@ export default function DemoWorkspaceResults() {
                     <div className="note-list">
                       <div className="note-row">
                         This flow is at the top because it stayed above the active cutoff after the
-                        rules and trained model were combined.
+                        rules and trained model were combined into one ranking.
                       </div>
                     </div>
                   </>

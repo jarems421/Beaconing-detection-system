@@ -16,8 +16,9 @@ export default function DemoWorkspaceExplanation() {
   return (
     <WorkspaceShell
       active="explanation"
+      stepLabel="Step 3 of 5"
       title="Explanation"
-      description="This page slows the run down and explains one selected flow in plain language."
+      description="This is the page for the 'why'. It slows the run down, focuses on one flow, and explains the result in plain language."
       resultData={resultData}
     >
       {!resultData ? (
@@ -28,7 +29,7 @@ export default function DemoWorkspaceExplanation() {
             <div className="section-head">
               <div>
                 <h2>Choose a flow to explain</h2>
-                <p>Switch the focus without having to stare at the full list the whole time.</p>
+                <p>Pick the flow you want to understand in more detail.</p>
               </div>
             </div>
             <select
@@ -92,7 +93,7 @@ export default function DemoWorkspaceExplanation() {
             <div className="details-body">
               <div className="note-list">
                 <NoteRow text="The model score is a ranking signal. Higher means more suspicious, but it is not a probability." />
-                <NoteRow text="The combined score is what the workspace uses to decide which flows to bring to the top." />
+                <NoteRow text="The combined score is what the workspace uses to decide which flows to bring to the top of the run." />
                 <NoteRow text="A flagged flow is something to review, not automatic proof of beaconing." />
               </div>
             </div>

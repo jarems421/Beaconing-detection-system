@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const proofChips = [
-  "Accepts common flow-log formats",
-  "Combines fixed rules and a trained model",
+  "Run an included input or upload your own",
+  "Accepts normalized CSV, Zeek, and NetFlow/IPFIX CSV",
   "Shows what was skipped and why",
-  "Produces readable outputs",
+  "Walks you through the result page by page",
 ];
 
 export default function DemoOverview({ data }) {
@@ -29,10 +29,11 @@ export default function DemoOverview({ data }) {
       <section className="overview-hero">
         <div className="overview-hero-copy panel">
           <div className="eyebrow">Operational Beaconing Detection Demo</div>
-          <h1>One checked-in run. One real detection workflow.</h1>
+          <h1>Run a file, then walk through the result.</h1>
           <p className="hero-subtitle">
-            This demo takes network flow logs, groups repeated connections, scores them for possible
-            beaconing, and shows both the flagged traffic and anything the system had to skip.
+            Start with one of the included inputs or your own small file. The workspace then walks
+            you through the result in separate pages for results, explanation, diagnostics, and raw
+            files.
           </p>
 
           <div className="chip-strip">
@@ -47,7 +48,7 @@ export default function DemoOverview({ data }) {
             <Link className="primary-link" href="/workspace">
               Open demo workspace
             </Link>
-            <div className="overview-command-label">Example command</div>
+            <div className="overview-command-label">One example scoring command</div>
           </div>
           <pre className="code-block compact-code">{scoreCommand}</pre>
         </div>
@@ -56,6 +57,7 @@ export default function DemoOverview({ data }) {
           <div className="panel-kicker">Featured detection</div>
           {topAlert ? (
             <div className="featured-card">
+              <div className="detail-label">One included suspicious input</div>
               <div className="featured-flow">
                 {topAlert.src} {"->"} {topAlert.dst}:{topAlert.port}/{topAlert.proto}
               </div>
@@ -84,8 +86,8 @@ export default function DemoOverview({ data }) {
                 </div>
               </div>
               <p>
-                This flow stands out because the same source keeps contacting the same destination in a
-                repeated pattern, and the trained model also ranks it near the top.
+                This flow rose to the top because the same source kept contacting the same
+                destination on a repeated schedule, and the trained model also ranked it highly.
               </p>
               <div className="detail-label">Why this rose to the top</div>
               <div className="token-row">
@@ -102,16 +104,16 @@ export default function DemoOverview({ data }) {
 
       <section className="workflow-strip overview-strip">
         <WorkflowStep
-          title="Ingest"
-          body="Read the input file, convert it into one standard shape, and record any rows that could not be used."
+          title="1. Run"
+          body="Open an included input or upload a small file and let the scorer process it."
         />
         <WorkflowStep
-          title="Score"
-          body="Combine simple hand-written checks with a trained model to decide which flows deserve attention."
+          title="2. Read"
+          body="Use the Results and Explanation pages to understand what the run flagged and why."
         />
         <WorkflowStep
-          title="Inspect"
-          body="Review the flagged flows, the reason each one was flagged, and the summary files produced by the run."
+          title="3. Drill down"
+          body="Open Diagnostics or Files only if you want the deeper detail behind the same run."
         />
       </section>
 
@@ -126,8 +128,8 @@ export default function DemoOverview({ data }) {
         <div className="panel">
           <div className="section-head">
             <div>
-              <h2>What the run produced</h2>
-              <p>Four default artifacts from the same checked-in scenario.</p>
+              <h2>What opens after a run</h2>
+              <p>The workspace keeps the main answer first, then leaves the raw outputs for later.</p>
             </div>
           </div>
           <div className="output-card-grid">
@@ -143,10 +145,10 @@ export default function DemoOverview({ data }) {
 
       <section className="panel overview-footer">
         <div>
-          <h2>Inspect the full run</h2>
+          <h2>Step into the workspace</h2>
           <p>
-            The workspace explains what was flagged, why it was flagged, what got skipped, and what
-            the scores do and do not mean.
+            You start on the Run page, then move through Results, Explanation, Diagnostics, and
+            Files without everything landing on one screen at once.
           </p>
         </div>
         <Link className="primary-link" href="/workspace">

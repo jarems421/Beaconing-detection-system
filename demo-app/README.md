@@ -6,7 +6,7 @@ Next.js app for the operational beaconing demo.
 
 Use these settings:
 
-- Production Branch: `operational-system`
+- Production Branch: `main`
 - Framework Preset: `Next.js`
 - Root Directory: `demo-app`
 
@@ -38,3 +38,14 @@ To enable live upload scoring in the deployed app, set:
 ```text
 NEXT_PUBLIC_DEMO_API_BASE_URL=https://your-demo-service.example.com
 ```
+
+## App Shape
+
+The demo is split so it is easier to read:
+
+- `/` overview
+- `/workspace` run launcher
+- `/workspace/results` main finding
+- `/workspace/explanation` plain-English explanation
+- `/workspace/diagnostics` run health and skipped rows
+- `/workspace/files` raw outputs and command details

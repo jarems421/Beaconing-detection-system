@@ -1,6 +1,6 @@
 # Operational Batch System
 
-This branch starts the operational command-line system around a stable batch contract: one input,
+This repo includes an operational command-line system around a stable batch contract: one input,
 ranked beaconing alerts, machine-readable outputs, and a readable report.
 
 The same branch now also includes:
@@ -150,13 +150,21 @@ metadata.
 
 ## Demo Architecture
 
+In plain English:
+
+1. Start with an included input or upload a small file.
+2. The demo workspace sends that input to the separate scoring service.
+3. The service runs the same operational scorer used by the CLI.
+4. The scorer writes alerts, scored flows, a run summary, and a report.
+5. The workspace then lets you inspect those outputs one page at a time.
+
 ```text
-sample scenario or uploaded file
+included input or uploaded file
 -> demo workspace
 -> demo scoring service
 -> beacon-ops scoring pipeline
 -> alerts / scored flows / run summary / report
--> workspace inspection view
+-> results, explanation, diagnostics, and files pages
 ```
 
 ## Interpret Scores

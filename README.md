@@ -1,19 +1,25 @@
 # Beaconing Detection System
 
-Operational and research system for flow-level command-and-control beaconing detection across
-normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV inputs.
+This repo has two layers that fit together:
 
-Hybrid rules + Random Forest scoring, validation-backed threshold profiles, ingestion diagnostics,
-and conservative score-reporting safeguards sit alongside the full synthetic and CTU-13 evaluation
-pipeline, a live demo workspace, and a separate upload-scoring service.
+- an operational path for scoring flow logs and writing readable outputs
+- a research path for testing how well those ideas hold up under synthetic stress and CTU-13 shift
+
+At the top level, you can run a live demo, score normalized CSV / Zeek `conn.log` /
+NetFlow/IPFIX-style CSV, and inspect the result page by page. Under that, the repo still keeps the
+full comparative evaluation pipeline that produced the research figures and tables.
 
 **Headline result:** strong synthetic performance does not automatically transfer to public flow
 data. Minimum evidence requirements and schema/domain shift remain the core limits.
 
-## Branch Guide
+## Where To Start
 
-- `operational-system`: operational CLI branch for normalized CSV, Zeek, and NetFlow/IPFIX ingestion, hybrid scoring, manifests, diagnostics, and CI-tested workflows.
-- `main`: preserved research branch for the finalized comparative study, benchmark narrative, and research-first framing.
+- If you just want the shortest path through the project, stay on `main`, open the live demo, and
+  run one of the included inputs.
+- If you want the cleaner operational implementation history, the `operational-system` branch keeps
+  that line of work intact as well.
+- If you want the research story first, jump to the figures and tables in the `Results` section
+  below.
 
 ## Why This Repo
 
@@ -37,35 +43,39 @@ data. Minimum evidence requirements and schema/domain shift remain the core limi
 
 ## Live Demo
 
-The repo now includes a two-layer demo:
+The demo is meant to feel guided rather than crowded:
 
-- `/` overview page for the project story
-- `/workspace` inspection view for alerts, diagnostics, and raw outputs
-- a separate Python scoring service for small uploaded files
+- `/` gives the short version of what the system does
+- `/workspace` starts the run
+- `/workspace/results` shows the main finding
+- `/workspace/explanation` slows down and explains one flagged flow
+- `/workspace/diagnostics` shows what was loaded and what was skipped
+- `/workspace/files` keeps the raw outputs and command details out of the way until you want them
 
-That split keeps the overview readable while still letting people test the actual workflow.
+The app can work in two modes:
+
+- run one of the included sample inputs
+- upload a small file and score it through the separate Python demo service
+
+That split keeps the main answer easy to find while still letting you inspect the full workflow.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A[Checked-in sample scenarios<br/>or uploaded flow file] --> B[Next.js overview and workspace]
-    B --> C[Python demo scoring service]
-    C --> D[Input validation and alias mapping]
-    D --> E[Flow grouping<br/>src_ip + dst_ip + dst_port + protocol + direction]
-    E --> F[Behavioural feature extraction]
-    F --> G1[Rules baseline]
-    F --> G2[Saved Random Forest artifact]
-    G1 --> H[Hybrid decision policy]
-    G2 --> H
-    H --> I[alerts.csv]
-    H --> J[scored_flows.csv]
-    H --> K[run_summary.json]
-    H --> L[report.md]
-    I --> B
-    J --> B
-    K --> B
-    L --> B
+If you want the quick mental model, it is this:
+
+1. You start with either an included input or a small uploaded file.
+2. The demo service validates the file and maps field aliases into one normalized event shape.
+3. The scorer groups repeated connections into candidate flows using the operational grouping key.
+4. The feature pipeline measures timing regularity, burst shape, and size stability.
+5. Rules and the saved Random Forest artifact both score the flows.
+6. The run writes `alerts.csv`, `scored_flows.csv`, `run_summary.json`, and `report.md`.
+7. The Next.js workspace lets you read those results one page at a time instead of dumping
+   everything onto one screen.
+
+The same flow in one line:
+
+```text
+input file -> normalize -> group flows -> extract features -> rules + RF scoring -> alerts/report/summary -> workspace pages
 ```
 
 ## Core Result
@@ -137,13 +147,13 @@ those native features have discriminative power under scenario-aware splits.
 
 | Path | Purpose |
 | --- | --- |
-| `demo-app/` | Next.js app for the operational demo, ready for Vercel with `demo-app` as the root directory. |
+| `demo-app/` | Next.js app for the live demo. The workspace is split into Run, Results, Explanation, Diagnostics, and Files pages. |
 | `demo-app/public/demo-scenarios/` | Checked-in sample scenario payloads used by the live demo workspace. |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `src/beacon_detector/demo_service/` | Separate Python API for live upload-and-score demo requests. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
 | `docs/live_demo_service.md` | Local run/deploy notes for the upload-scoring service. |
-| `docs/operational_demo.md` | Real CLI demo flow and static visual demo entry point. |
+| `docs/operational_demo.md` | Live demo flow, local run steps, and notes about the older static snapshot. |
 | `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
 | `docs/operational_example.md` | Tiny end-to-end operational CLI example using checked-in CSV fixtures. |
 | `docs/project_walkthrough.md` | Guided project walkthrough. |
@@ -182,6 +192,16 @@ python -m pip install -e ".[dev]"
 ```
 
 ## Quick Start
+
+If you want the most human path through the repo, do this:
+
+1. Run the Next.js app in `demo-app/`
+2. Open `/workspace`
+3. Run one of the included inputs
+4. Walk through Results -> Explanation -> Diagnostics -> Files
+
+If you want the command-line path instead, the sections below cover the batch scorer and training
+commands.
 
 Run the tests:
 
@@ -313,7 +333,7 @@ Run one exact checked-in NetFlow/IPFIX example:
 beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
 ```
 
-Open the checked-in visual demo page:
+Open the older checked-in static demo snapshot:
 
 ```text
 docs/operational_demo.html

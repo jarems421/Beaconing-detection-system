@@ -9,8 +9,9 @@ export default function DemoWorkspaceFiles() {
   return (
     <WorkspaceShell
       active="files"
+      stepLabel="Step 5 of 5"
       title="Files"
-      description="This page holds the raw output files and command details, tucked away so they do not crowd the rest of the workspace."
+      description="This is the raw-output page. It keeps the report, summary JSON, CSVs, and command details in one place without crowding the main result pages."
       resultData={resultData}
     >
       {!resultData ? (
@@ -54,7 +55,7 @@ export default function DemoWorkspaceFiles() {
             <div className="details-body">
               <div className="note-list">
                 <div className="note-row">
-                  Built-in inputs and uploaded files are pushed into the same workspace payload, so
+                  Included inputs and uploaded files are pushed into the same workspace payload, so
                   the demo is not secretly running two different interfaces.
                 </div>
                 <div className="note-row">

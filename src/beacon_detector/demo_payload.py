@@ -11,6 +11,7 @@ from beacon_detector.ops.model import OpsModelTrainingResult, ThresholdProfileNa
 from beacon_detector.ops.pipeline import OpsScoreOutputs
 
 PayloadSourceKind = Literal["sample", "uploaded"]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +38,8 @@ def build_demo_payload(
     training_summary = json.loads(training.training_summary_json.read_text(encoding="utf-8"))
     alerts = _rows(score.alerts_csv)
     scored_flows = _rows(score.scored_flows_csv)
-    display_input = source_filename or scenario.input_path.as_posix()
+    display_input = source_filename or _display_path(scenario.input_path)
+    display_model_dir = "models/operational/demo_rf"
 
     return {
         "scenario": {
@@ -46,8 +48,8 @@ def build_demo_payload(
             "description": scenario.description,
             "category": scenario.category,
             "input_format": scenario.input_format,
-            "input_path": str(scenario.input_path),
-            "input_name": scenario.input_path.name,
+            "input_path": display_input,
+            "input_name": Path(display_input).name,
             "profile": scenario.profile,
         },
         "source": {
@@ -122,11 +124,23 @@ def build_demo_payload(
             },
         ],
         "previews": {
-            "report_md": score.report_md.read_text(encoding="utf-8"),
+            "report_md": _sanitize_preview_text(
+                score.report_md.read_text(encoding="utf-8"),
+                actual_input_path=scenario.input_path,
+                display_input_path=display_input,
+                actual_model_path=training.model_dir,
+                display_model_path=display_model_dir,
+            ),
             "run_summary_json": json.dumps(_summary_preview(summary), indent=2),
             "alerts_csv": score.alerts_csv.read_text(encoding="utf-8"),
             "scored_flows_csv": score.scored_flows_csv.read_text(encoding="utf-8"),
-            "training_report_md": training.training_report_md.read_text(encoding="utf-8"),
+            "training_report_md": _sanitize_preview_text(
+                training.training_report_md.read_text(encoding="utf-8"),
+                actual_input_path=DEMO_TRAIN_FALLBACK_PATH,
+                display_input_path="data/operational/example_train.csv",
+                actual_model_path=training.model_dir,
+                display_model_path=display_model_dir,
+            ),
         },
         "calibration": {
             "status": training_summary["calibration"]["probability_calibration"],
@@ -241,3 +255,33 @@ def _summary_preview(summary: dict[str, object]) -> dict[str, object]:
         },
         "score_semantics": summary["score_semantics"],
     }
+
+
+DEMO_TRAIN_FALLBACK_PATH = REPO_ROOT / "data" / "operational" / "example_train.csv"
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path.name
+
+
+def _sanitize_preview_text(
+    text: str,
+    *,
+    actual_input_path: Path,
+    display_input_path: str,
+    actual_model_path: Path,
+    display_model_path: str,
+) -> str:
+    replacements = {
+        str(actual_input_path): display_input_path,
+        actual_input_path.as_posix(): display_input_path,
+        str(actual_model_path): display_model_path,
+        actual_model_path.as_posix(): display_model_path,
+    }
+    cleaned = text
+    for source, target in replacements.items():
+        cleaned = cleaned.replace(source, target)
+    return cleaned
