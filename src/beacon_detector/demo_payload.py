@@ -94,19 +94,31 @@ def build_demo_payload(
         "output_files": [
             {
                 "name": "alerts.csv",
-                "description": "Ranked suspicious flows with reasons and scoring context.",
+                "description": (
+                    "The flows the system thinks deserve review first, "
+                    "with short reasons."
+                ),
             },
             {
                 "name": "scored_flows.csv",
-                "description": "Rules, RF, and hybrid scores for every grouped flow.",
+                "description": (
+                    "Every grouped flow with the rule score, model score, "
+                    "and final combined score."
+                ),
             },
             {
                 "name": "run_summary.json",
-                "description": "Machine-readable ingestion diagnostics and threshold metadata.",
+                "description": (
+                    "A machine-readable summary of what was loaded, what was "
+                    "skipped, and which settings were used."
+                ),
             },
             {
                 "name": "report.md",
-                "description": "Analyst-readable report with conservative score interpretation.",
+                "description": (
+                    "A human-readable report that explains the run in plain "
+                    "language and keeps the score wording conservative."
+                ),
             },
         ],
         "previews": {

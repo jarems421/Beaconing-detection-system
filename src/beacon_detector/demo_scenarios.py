@@ -11,8 +11,8 @@ DEMO_SCENARIOS = (
         id="suspicious-netflow",
         label="Suspicious NetFlow/IPFIX run",
         description=(
-            "A checked-in NetFlow/IPFIX fixture with a strong periodic candidate plus "
-            "one skipped unsupported row."
+            "A sample network-flow file where one machine talks to the same destination "
+            "at very regular intervals. One row is skipped because it uses an unsupported protocol."
         ),
         input_path=REPO_ROOT / "data" / "operational" / "fixtures" / "netflow_demo.csv",
         input_format="netflow-ipfix-csv",
@@ -23,8 +23,8 @@ DEMO_SCENARIOS = (
         id="low-signal-zeek",
         label="Low-signal Zeek conn.log run",
         description=(
-            "A short Zeek conn.log example that exercises ingestion and scoring with "
-            "limited evidence and no dominant alert."
+            "A short Zeek example with only a little evidence. It still scores, "
+            "but the result is much less convincing than the suspicious sample."
         ),
         input_path=REPO_ROOT / "data" / "operational" / "fixtures" / "zeek_parity.conn.log",
         input_format="zeek-conn",
@@ -35,8 +35,8 @@ DEMO_SCENARIOS = (
         id="messy-netflow",
         label="Messy NetFlow/IPFIX run",
         description=(
-            "A small input with one unsupported protocol row to surface skip reasons "
-            "and limited evidence handling."
+            "A small messy input that shows how the system handles incomplete or unsupported rows "
+            "without failing silently."
         ),
         input_path=(
             REPO_ROOT
