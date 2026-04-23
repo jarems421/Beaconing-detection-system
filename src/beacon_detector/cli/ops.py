@@ -85,7 +85,7 @@ def main() -> None:
     score_parser.add_argument(
         "--input-format",
         required=True,
-        choices=("normalized-csv", "zeek-conn"),
+        choices=("normalized-csv", "zeek-conn", "netflow-ipfix-csv"),
     )
     score_parser.add_argument("--output-dir", required=True, type=Path)
     score_parser.add_argument(

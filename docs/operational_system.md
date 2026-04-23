@@ -55,6 +55,25 @@ Score Zeek `conn.log`:
 beacon-ops score --input path/to/conn.log --input-format zeek-conn --output-dir results/operational/zeek_run_001
 ```
 
+Score NetFlow/IPFIX-style CSV:
+
+```powershell
+beacon-ops score --input path/to/netflow.csv --input-format netflow-ipfix-csv --output-dir results/operational/netflow_run_001
+```
+
+The NetFlow/IPFIX adapter accepts common CSV aliases for:
+
+| Normalized field | Common aliases |
+| --- | --- |
+| `timestamp` | `first_switched`, `flowStartSeconds`, `flowStartMilliseconds`, `start_time` |
+| `src_ip` | `srcaddr`, `sourceIPv4Address`, `sourceIPv6Address` |
+| `src_port` | `srcport`, `sourceTransportPort` |
+| `dst_ip` | `dstaddr`, `destinationIPv4Address`, `destinationIPv6Address` |
+| `dst_port` | `dstport`, `destinationTransportPort` |
+| `protocol` | `proto`, `protocolIdentifier`; supports `6`/`tcp` and `17`/`udp` |
+| `total_bytes` | `bytes`, `octets`, `octetDeltaCount`, `octetTotalCount` |
+| `total_packets` | `pkts`, `packetDeltaCount`, `packetTotalCount` |
+
 Train a Random Forest model:
 
 ```powershell

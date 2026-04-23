@@ -15,7 +15,7 @@ from beacon_detector.ops import (
     run_rules_only_score,
     train_random_forest_model,
 )
-from beacon_detector.ops.ingest import load_zeek_conn_log
+from beacon_detector.ops.ingest import load_netflow_ipfix_csv, load_zeek_conn_log
 from beacon_detector.ops.model import (
     OpsGroupedValidationResult,
     OpsValidationPrediction,
@@ -81,6 +81,37 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(events[0].protocol, "tcp")
         self.assertEqual(events[0].total_bytes, 150)
 
+    def test_netflow_ipfix_csv_adapter_loads_common_field_aliases(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_netflow")
+        path = output_dir / "netflow.csv"
+        _write_netflow_csv(path)
+
+        events = load_netflow_ipfix_csv(path)
+
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].src_ip, "10.0.0.5")
+        self.assertEqual(events[0].src_port, "1111")
+        self.assertEqual(events[0].dst_ip, "203.0.113.10")
+        self.assertEqual(events[0].dst_port, 443)
+        self.assertEqual(events[0].protocol, "tcp")
+        self.assertEqual(events[0].total_bytes, 150)
+        self.assertEqual(events[0].total_packets, 3)
+        self.assertEqual(events[0].duration_seconds, 1.0)
+
+    def test_ipfix_csv_adapter_loads_information_element_names(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_ipfix")
+        path = output_dir / "ipfix.csv"
+        _write_ipfix_csv(path)
+
+        events = load_netflow_ipfix_csv(path)
+
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].src_ip, "10.0.0.5")
+        self.assertEqual(events[0].dst_port, 443)
+        self.assertEqual(events[0].protocol, "tcp")
+        self.assertEqual(events[0].total_bytes, 150)
+        self.assertEqual(events[0].duration_seconds, 1.0)
+
     def test_cli_score_writes_outputs(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_cli")
         input_path = output_dir / "normalized.csv"
@@ -106,6 +137,32 @@ class OperationalPipelineTests(unittest.TestCase):
 
         self.assertIn("Operational scoring complete", completed.stdout)
         self.assertTrue((output_dir / "out" / "alerts.csv").exists())
+
+    def test_cli_score_accepts_netflow_ipfix_csv(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_cli_netflow")
+        input_path = output_dir / "netflow.csv"
+        _write_netflow_csv(input_path)
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "beacon_detector.cli.ops",
+                "score",
+                "--input",
+                str(input_path),
+                "--input-format",
+                "netflow-ipfix-csv",
+                "--output-dir",
+                str(output_dir / "out"),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertIn("Operational scoring complete", completed.stdout)
+        self.assertTrue((output_dir / "out" / "scored_flows.csv").exists())
 
     def test_cli_train_model_writes_artifact(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_cli_train")
@@ -424,6 +481,73 @@ def _write_zeek_conn_log(path: Path) -> None:
         "1767225660.000000\tC2\t10.0.0.5\t2222\t203.0.113.10\t443\ttcp\t1.0\t100\t50\t2\t1",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _write_netflow_csv(path: Path) -> None:
+    rows = [
+        {
+            "first_switched": "1767225600.000000",
+            "last_switched": "1767225601.000000",
+            "srcaddr": "10.0.0.5",
+            "srcport": "1111",
+            "dstaddr": "203.0.113.10",
+            "dstport": "443",
+            "proto": "6",
+            "bytes": "150",
+            "pkts": "3",
+        },
+        {
+            "first_switched": "1767225660.000000",
+            "last_switched": "1767225661.500000",
+            "srcaddr": "10.0.0.5",
+            "srcport": "2222",
+            "dstaddr": "203.0.113.10",
+            "dstport": "443",
+            "proto": "6",
+            "bytes": "150",
+            "pkts": "3",
+        },
+        {
+            "first_switched": "1767225660.000000",
+            "last_switched": "1767225661.500000",
+            "srcaddr": "10.0.0.5",
+            "srcport": "2222",
+            "dstaddr": "203.0.113.10",
+            "dstport": "0",
+            "proto": "1",
+            "bytes": "150",
+            "pkts": "3",
+        },
+    ]
+    _write_csv(path, rows)
+
+
+def _write_ipfix_csv(path: Path) -> None:
+    rows = [
+        {
+            "flowStartMilliseconds": "1767225600000",
+            "flowEndMilliseconds": "1767225601000",
+            "sourceIPv4Address": "10.0.0.5",
+            "sourceTransportPort": "1111",
+            "destinationIPv4Address": "203.0.113.10",
+            "destinationTransportPort": "443",
+            "protocolIdentifier": "6",
+            "octetDeltaCount": "150",
+            "packetDeltaCount": "3",
+        },
+        {
+            "flowStartMilliseconds": "1767225660000",
+            "flowEndMilliseconds": "1767225661000",
+            "sourceIPv4Address": "10.0.0.5",
+            "sourceTransportPort": "2222",
+            "destinationIPv4Address": "203.0.113.10",
+            "destinationTransportPort": "443",
+            "protocolIdentifier": "tcp",
+            "octetDeltaCount": "150",
+            "packetDeltaCount": "3",
+        },
+    ]
+    _write_csv(path, rows)
 
 
 def _write_csv(path: Path, rows: list[dict[str, str]]) -> None:

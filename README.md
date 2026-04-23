@@ -242,6 +242,12 @@ Score a Zeek `conn.log`:
 beacon-ops score --input data/zeek/conn.log --input-format zeek-conn --output-dir results/operational/zeek_run_001
 ```
 
+Score a NetFlow/IPFIX-style CSV:
+
+```powershell
+beacon-ops score --input data/flows/netflow.csv --input-format netflow-ipfix-csv --output-dir results/operational/netflow_run_001
+```
+
 Without `--model-artifact`, scoring uses the conservative rules path. With `--model-artifact`,
 scoring loads the saved Random Forest artifact and writes hybrid rules + RF scores without retraining.
 The `run_summary.json` file is also the score-run manifest: it records output roles, score semantics,
