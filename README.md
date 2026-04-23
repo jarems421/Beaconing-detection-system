@@ -111,6 +111,9 @@ those native features have discriminative power under scenario-aware splits.
 | --- | --- |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
+| `docs/operational_demo.md` | Real CLI demo flow and static visual demo entry point. |
+| `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
+| `docs/operational_example.md` | Tiny end-to-end operational CLI example using checked-in CSV fixtures. |
 | `docs/project_walkthrough.md` | Guided project walkthrough. |
 | `docs/report_draft.md` | More complete technical writeup. |
 | `results/figures/final_story/` | Headline figures to view first. |
@@ -165,6 +168,132 @@ Run a quick synthetic evaluation:
 ```powershell
 python -m beacon_detector.evaluation.run --quick
 ```
+
+## Operational Batch CLI
+
+The operational batch path scores a normalized CSV, Zeek `conn.log`, or NetFlow/IPFIX-style CSV as
+one batch and writes four default outputs:
+
+```text
+alerts.csv
+scored_flows.csv
+run_summary.json
+report.md
+```
+
+Canonical normalized CSV columns:
+
+| Column | Required | Notes |
+| --- | --- | --- |
+| `timestamp` | Yes | ISO-8601 timestamp; naive timestamps are treated as UTC. |
+| `src_ip` | Yes | Source host. |
+| `direction` | Yes | Direction label used in the flow grouping key. |
+| `dst_ip` | Yes | Destination host. |
+| `dst_port` | Yes | Destination port. |
+| `protocol` | Yes | `tcp` or `udp`. |
+| `total_bytes` | Yes | Non-negative integer. |
+| `src_port` | No | Captured for context, not used in default grouping. |
+| `duration_seconds` | No | Non-negative numeric value. |
+| `total_packets` | No | Non-negative integer. |
+| `label` | Training only | `benign`, `beacon`, or `unknown`; unknown rows are skipped by training. |
+
+Validate a normalized CSV:
+
+```powershell
+beacon-ops validate --input data/operational/sample_normalized.csv
+```
+
+Score a normalized CSV:
+
+```powershell
+beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --output-dir results/operational/run_001
+```
+
+Train a Random Forest model from labelled normalized CSV rows:
+
+```powershell
+beacon-ops train-model --train data/operational/labelled_train.csv --output-dir models/operational/rf_v1
+```
+
+Training artifacts include StratifiedGroupKFold validation metrics when there are enough benign and
+beacon groups. The groups use the same operational key as scoring:
+`src_ip + dst_ip + dst_port + protocol + direction`.
+The model directory also includes an artifact manifest with feature names, label mapping, validation
+metrics, dependency versions, training-source references, and persistence warnings.
+
+Export synthetic traffic into that same training contract for bootstrap/demo runs:
+
+```powershell
+beacon-ops export-synthetic --output data/operational/synthetic_train.csv --seed 7
+```
+
+Synthetic exports are useful for smoke tests and demonstrations, but they are not deployment-ready
+training evidence.
+
+Score with the saved model artifact loaded at runtime:
+
+```powershell
+beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --output-dir results/operational/run_002
+```
+
+Saved RF artifacts include validation-backed threshold profiles: `conservative`, `balanced`, and
+`sensitive`. Select one at score time:
+
+```powershell
+beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --profile balanced --output-dir results/operational/run_003
+```
+
+Score a Zeek `conn.log`:
+
+```powershell
+beacon-ops score --input data/zeek/conn.log --input-format zeek-conn --output-dir results/operational/zeek_run_001
+```
+
+Score a NetFlow/IPFIX-style CSV:
+
+```powershell
+beacon-ops score --input data/flows/netflow.csv --input-format netflow-ipfix-csv --output-dir results/operational/netflow_run_001
+```
+
+Run one exact checked-in NetFlow/IPFIX example:
+
+```powershell
+beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
+```
+
+Open the checked-in visual demo page:
+
+```text
+docs/operational_demo.html
+```
+
+Run the checked-in end-to-end example:
+
+```powershell
+beacon-ops score --input data/operational/example_score.csv --input-format normalized-csv --output-dir results/operational/example_rules
+```
+
+Without `--model-artifact`, scoring uses the conservative rules path. With `--model-artifact`,
+scoring loads the saved Random Forest artifact and writes hybrid rules + RF scores without retraining.
+The `run_summary.json` file is also the score-run manifest: it records output roles, score semantics,
+ingestion counts, skipped-row reasons, grouping policy, runtime environment, and loaded-model
+metadata.
+
+## Interpret Scores
+
+- `rule_score` is the interpretable baseline score before thresholding.
+- `rf_score` is an uncalibrated Random Forest score from the saved artifact. Use it for ranking and threshold policies, not as a direct probability.
+- `hybrid_score` is the normalized ranking score used to combine rules and RF signals.
+- `confidence` is a threshold-relative display heuristic in `alerts.csv`, not a calibrated probability.
+- `report.md` and `run_summary.json` record the active threshold profile, grouped-validation metrics, and calibration diagnostics from out-of-fold training scores.
+
+## Known Ingestion Limits
+
+- The operational adapter path supports `tcp` and `udp`; unsupported protocols are skipped and recorded in `run_summary.json`.
+- Zeek ingestion expects a standard `conn.log` with a `#fields` header and the usual connection columns.
+- NetFlow/IPFIX CSV ingestion is alias-based. It handles common exporter field names and IPFIX Information Element names, but it does not implement template negotiation or every vendor-specific column.
+- Header-only inputs fail fast, malformed required values fail fast, and optional missing fields are left empty in the normalized event record.
+- CTU `.binetflow` remains in the research/demo path and is not the operational training contract.
 
 ## Reproduce Key Artifacts
 

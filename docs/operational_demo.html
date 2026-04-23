@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operational Beaconing Demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0c1117;
+        --panel: #121922;
+        --panel-2: #0f151d;
+        --border: #233242;
+        --text: #eef4f8;
+        --muted: #99a8b8;
+        --accent: #3fb6a8;
+        --accent-2: #7cc7ff;
+        --warn: #f5b85d;
+        --danger: #ff7a7a;
+        --ok: #70d39b;
+        --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, Segoe UI, Arial, sans-serif;
+        background: linear-gradient(180deg, #0b1015 0%, #0f151d 100%);
+        color: var(--text);
+      }
+
+      a {
+        color: var(--accent-2);
+      }
+
+      .page {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 24px 0 56px;
+      }
+
+      .section {
+        margin-top: 18px;
+        padding: 18px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 4px 8px;
+        border: 1px solid rgba(124, 199, 255, 0.35);
+        border-radius: 999px;
+        color: var(--accent-2);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(30px, 4vw, 44px);
+        line-height: 1.05;
+      }
+
+      h2 {
+        font-size: 22px;
+        margin-bottom: 10px;
+      }
+
+      h3 {
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      .lead {
+        margin-top: 10px;
+        max-width: 840px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1.2fr 0.8fr;
+        align-items: start;
+      }
+
+      .code-block,
+      .preview {
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #0a0f15;
+        color: #dce7ee;
+        font-family: Consolas, Monaco, monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        overflow: auto;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .metric {
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel-2);
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .metric-value {
+        margin-top: 6px;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .split {
+        grid-template-columns: 0.95fr 1.05fr;
+      }
+
+      .panel-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .alert-row {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel-2);
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .alert-row.active {
+        border-color: rgba(63, 182, 168, 0.65);
+        background: rgba(63, 182, 168, 0.09);
+      }
+
+      .alert-meta,
+      .muted {
+        color: var(--muted);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-right: 8px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .severity-medium {
+        border-color: rgba(245, 184, 93, 0.4);
+        color: #ffd79a;
+      }
+
+      .severity-high {
+        border-color: rgba(255, 122, 122, 0.4);
+        color: #ffb6b6;
+      }
+
+      .detail-grid,
+      .diag-grid,
+      .figure-grid,
+      .file-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .detail-grid,
+      .diag-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .token-list,
+      .reason-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .token {
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .search {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #0a0f15;
+        color: var(--text);
+        font: inherit;
+      }
+
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .tab-button {
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #0a0f15;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .tab-button.active {
+        color: var(--text);
+        border-color: rgba(124, 199, 255, 0.5);
+        background: rgba(124, 199, 255, 0.08);
+      }
+
+      .figure-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .figure-card,
+      .file-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--panel-2);
+      }
+
+      .figure-card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+        background: #0a0f15;
+      }
+
+      .figure-card div,
+      .file-card div {
+        padding: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 10px 8px;
+        border-top: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .foot-note {
+        margin-top: 14px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      @media (max-width: 980px) {
+        .hero-grid,
+        .split,
+        .detail-grid,
+        .diag-grid,
+        .figure-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          width: min(100% - 20px, 1180px);
+          padding-top: 12px;
+        }
+
+        .metrics {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <section class="section grid hero-grid">
+        <div>
+          <span class="eyebrow">Operational Demo</span>
+          <h1 id="title"></h1>
+          <p id="subtitle" class="lead"></p>
+        </div>
+        <div class="code-block" id="commands"></div>
+      </section>
+
+      <section class="section">
+        <div class="grid metrics" id="metrics"></div>
+      </section>
+
+      <section class="section grid split">
+        <div>
+          <h2>Flagged Flows</h2>
+          <p class="lead" style="margin-top: 0; margin-bottom: 12px">
+            Checked-in NetFlow demo fixture scored through the hybrid path.
+          </p>
+          <input id="search" class="search" placeholder="Search IP, protocol, reason, score..." />
+          <div id="alerts" class="panel-list" style="margin-top: 12px"></div>
+        </div>
+        <div>
+          <h2>Selected Alert</h2>
+          <div id="selected-alert" class="panel-list"></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Output Files</h2>
+        <div id="output-files" class="file-grid"></div>
+      </section>
+
+      <section class="section">
+        <h2>Output Previews</h2>
+        <div id="tabs" class="tabs"></div>
+        <div id="preview" class="preview"></div>
+      </section>
+
+      <section class="section grid diag-grid">
+        <div>
+          <h2>Ingestion Diagnostics</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Reason</th>
+                <th>Count</th>
+              </tr>
+            </thead>
+            <tbody id="skip-reasons"></tbody>
+          </table>
+          <p class="foot-note">
+            Accepted rows, skipped rows, and skip reasons are recorded in the run summary.
+          </p>
+        </div>
+        <div>
+          <h2>Score Interpretation</h2>
+          <div class="code-block" id="calibration-box"></div>
+          <p class="foot-note">
+            RF output is shown as an uncalibrated ranking score, matching the CLI artifacts.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Research Context</h2>
+        <p class="lead" style="margin-top: 0; margin-bottom: 14px">
+          Final-study figures kept alongside the operational path.
+        </p>
+        <div id="figures" class="figure-grid"></div>
+      </section>
+    </div>
+
+    <script src="./operational_demo_data.js"></script>
+    <script>
+      const data = window.OPERATIONAL_DEMO_DATA;
+      const previewOrder = [
+        ["report_md", "report.md"],
+        ["run_summary_json", "run_summary.json"],
+        ["alerts_csv", "alerts.csv"],
+        ["scored_flows_csv", "scored_flows.csv"],
+        ["training_report_md", "training_report.md"],
+      ];
+
+      let selectedAlertId = data.selected_alert_id;
+      let selectedPreview = "report_md";
+
+      document.getElementById("title").textContent = data.title;
+      document.getElementById("subtitle").textContent = data.subtitle;
+      document.getElementById("commands").textContent = data.commands.join("\n\n");
+
+      document.getElementById("metrics").innerHTML = data.metrics
+        .map(
+          (metric) => `
+            <div class="metric">
+              <div class="metric-label">${escapeHtml(metric.label)}</div>
+              <div class="metric-value">${escapeHtml(String(metric.value))}</div>
+            </div>
+          `
+        )
+        .join("");
+
+      document.getElementById("output-files").innerHTML = data.output_files
+        .map(
+          (file) => `
+            <div class="file-card">
+              <div>
+                <h3>${escapeHtml(file.name)}</h3>
+                <p class="muted">${escapeHtml(file.description)}</p>
+              </div>
+            </div>
+          `
+        )
+        .join("");
+
+      document.getElementById("skip-reasons").innerHTML = data.skip_reasons
+        .map(
+          (item) => `
+            <tr>
+              <td>${escapeHtml(item.reason)}</td>
+              <td>${escapeHtml(String(item.count))}</td>
+            </tr>
+          `
+        )
+        .join("");
+
+      document.getElementById("calibration-box").textContent =
+        `status: ${data.calibration.status}\n` +
+        `brier_score: ${Number(data.calibration.brier_score).toFixed(4)}\n\n` +
+        data.calibration.recommendation;
+
+      document.getElementById("figures").innerHTML = data.figures
+        .map(
+          (figure) => `
+            <div class="figure-card">
+              <img src="${escapeHtml(figure.path)}" alt="${escapeHtml(figure.title)}" />
+              <div>
+                <h3>${escapeHtml(figure.title)}</h3>
+              </div>
+            </div>
+          `
+        )
+        .join("");
+
+      document.getElementById("search").addEventListener("input", renderAlerts);
+      renderAlerts();
+      renderSelectedAlert();
+      renderTabs();
+      renderPreview();
+
+      function renderAlerts() {
+        const query = document.getElementById("search").value.trim().toLowerCase();
+        const alerts = data.alerts.filter((alert) => {
+          if (!query) return true;
+          return [
+            alert.id,
+            alert.src,
+            alert.dst,
+            alert.proto,
+            String(alert.port),
+            ...alert.reasons,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(query);
+        });
+
+        const container = document.getElementById("alerts");
+        container.innerHTML = alerts
+          .map((alert) => {
+            const active = String(alert.id) === String(selectedAlertId);
+            return `
+              <button class="alert-row ${active ? "active" : ""}" data-alert-id="${escapeHtml(
+                String(alert.id)
+              )}">
+                <div class="alert-meta">${escapeHtml(alert.src)} -> ${escapeHtml(
+                  alert.dst
+                )}:${escapeHtml(String(alert.port))}/${escapeHtml(alert.proto)}</div>
+                <div style="margin-top: 6px; font-size: 20px; font-weight: 700;">${Number(
+                  alert.hybrid_score
+                ).toFixed(3)}</div>
+                <div style="margin-top: 10px;">
+                  <span class="badge severity-${escapeHtml(alert.severity)}">${escapeHtml(
+                    alert.severity
+                  )}</span>
+                  <span class="badge">${escapeHtml(alert.mode)}</span>
+                </div>
+                <div class="reason-list" style="margin-top: 10px;">
+                  ${alert.reasons
+                    .slice(0, 3)
+                    .map((reason) => `<span class="token">${escapeHtml(reason)}</span>`)
+                    .join("")}
+                </div>
+              </button>
+            `;
+          })
+          .join("");
+
+        container.querySelectorAll("[data-alert-id]").forEach((button) => {
+          button.addEventListener("click", () => {
+            selectedAlertId = button.getAttribute("data-alert-id");
+            renderAlerts();
+            renderSelectedAlert();
+          });
+        });
+      }
+
+      function renderSelectedAlert() {
+        const alert = data.alerts.find((item) => String(item.id) === String(selectedAlertId));
+        if (!alert) return;
+
+        document.getElementById("selected-alert").innerHTML = `
+          <div class="code-block" style="background: var(--panel-2);">
+            <div style="display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+              <div>
+                <div class="muted">Flow</div>
+                <div style="font-size: 22px; font-family: Inter, Segoe UI, Arial, sans-serif; font-weight: 700; margin-top: 4px;">
+                  ${escapeHtml(alert.src)} -> ${escapeHtml(alert.dst)}:${escapeHtml(
+          String(alert.port)
+        )}/${escapeHtml(alert.proto)}
+                </div>
+                <div style="margin-top: 8px;">
+                  <span class="badge severity-${escapeHtml(alert.severity)}">${escapeHtml(
+          alert.severity
+        )}</span>
+                  <span class="badge">${escapeHtml(alert.mode)}</span>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div class="muted">Hybrid score</div>
+                <div style="font-size: 28px; font-family: Inter, Segoe UI, Arial, sans-serif; font-weight: 700; margin-top: 4px;">
+                  ${Number(alert.hybrid_score).toFixed(3)}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="detail-grid">
+            <div class="code-block" style="background: var(--panel-2);">
+              event_count: ${escapeHtml(String(alert.event_count))}
+              total_bytes: ${escapeHtml(String(alert.bytes))}
+              rf_score: ${Number(alert.rf_score).toFixed(3)}
+              src_ports_seen: ${escapeHtml(alert.src_ports_seen)}
+            </div>
+            <div class="code-block" style="background: var(--panel-2);">
+              top_model_features:
+              ${escapeHtml(alert.features)}
+            </div>
+          </div>
+          <div>
+            <h3>Triggered reasons</h3>
+            <div class="reason-list">
+              ${alert.reasons
+                .map((reason) => `<span class="token">${escapeHtml(reason)}</span>`)
+                .join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTabs() {
+        document.getElementById("tabs").innerHTML = previewOrder
+          .map(
+            ([key, label]) => `
+              <button class="tab-button ${
+                selectedPreview === key ? "active" : ""
+              }" data-preview-key="${escapeHtml(key)}">${escapeHtml(label)}</button>
+            `
+          )
+          .join("");
+
+        document.querySelectorAll("[data-preview-key]").forEach((button) => {
+          button.addEventListener("click", () => {
+            selectedPreview = button.getAttribute("data-preview-key");
+            renderTabs();
+            renderPreview();
+          });
+        });
+      }
+
+      function renderPreview() {
+        document.getElementById("preview").textContent = data.previews[selectedPreview];
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+    </script>
+  </body>
+</html>

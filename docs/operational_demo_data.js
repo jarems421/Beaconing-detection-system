@@ -1,0 +1,149 @@
+window.OPERATIONAL_DEMO_DATA = {
+  "title": "Operational Beaconing Demo",
+  "subtitle": "Checked-in NetFlow fixture scored through the operational hybrid workflow with skip diagnostics and conservative score wording.",
+  "commands": [
+    "beacon-ops train-model --train data/operational/example_train.csv --output-dir models/operational/demo_rf",
+    "beacon-ops score --input data/operational/fixtures/netflow_demo.csv --input-format netflow-ipfix-csv --model-artifact models/operational/demo_rf --profile balanced --output-dir results/operational/demo"
+  ],
+  "metrics": [
+    {
+      "label": "Input rows",
+      "value": 11
+    },
+    {
+      "label": "Loaded events",
+      "value": 10
+    },
+    {
+      "label": "Skipped rows",
+      "value": 1
+    },
+    {
+      "label": "Alert count",
+      "value": 2
+    },
+    {
+      "label": "Profile",
+      "value": "balanced"
+    },
+    {
+      "label": "Mode",
+      "value": "rules_random_forest_hybrid"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "1",
+      "severity": "medium",
+      "src": "10.0.0.5",
+      "dst": "203.0.113.10",
+      "port": 443,
+      "proto": "tcp",
+      "mode": "rules_random_forest_hybrid",
+      "score": 1.3571428571428574,
+      "hybrid_score": 1.3571428571428574,
+      "rf_score": 0.575,
+      "event_count": 5,
+      "bytes": 640,
+      "src_ports_seen": "1111;2222;3333;4444;5555",
+      "reasons": [
+        "inter-arrival CV 0.000 <= 0.300",
+        "inter-arrival IQR 0.000s <= 30.000s",
+        "size CV 0.000 <= 0.300",
+        "flow duration 240.000s >= 30.000s",
+        "repeated communication has nearly constant payload size",
+        "random forest score 0.575 >= 0.000"
+      ],
+      "features": "trimmed_interarrival_cv | interarrival_within_20pct_median_fraction | interarrival_within_10pct_median_fraction | interarrival_median_absolute_percentage_deviation | periodicity_score | inter_arrival_cv | near_median_interarrival_fraction | dominant_interval_fraction"
+    },
+    {
+      "id": "2",
+      "severity": "medium",
+      "src": "10.0.0.50",
+      "dst": "198.51.100.20",
+      "port": 443,
+      "proto": "tcp",
+      "mode": "rules_random_forest_hybrid",
+      "score": 0.07142857142857144,
+      "hybrid_score": 0.07142857142857144,
+      "rf_score": 0.485,
+      "event_count": 5,
+      "bytes": 3480,
+      "src_ports_seen": "4100;4101;4102;4103;4104",
+      "reasons": [
+        "flow duration 353.000s >= 30.000s",
+        "random forest score 0.485 >= 0.000"
+      ],
+      "features": "trimmed_interarrival_cv | interarrival_within_20pct_median_fraction | interarrival_within_10pct_median_fraction | interarrival_median_absolute_percentage_deviation | periodicity_score | inter_arrival_cv | near_median_interarrival_fraction | dominant_interval_fraction"
+    }
+  ],
+  "selected_alert_id": "1",
+  "scored_flows": [
+    {
+      "flow": "10.0.0.5 -> 203.0.113.10:443/tcp",
+      "rule_score": 3.8000000000000003,
+      "rf_score": 0.575,
+      "hybrid_score": 1.3571428571428574,
+      "predicted_label": "beacon",
+      "evidence": "low_interarrival_variability | compact_interarrival_spread | stable_payload_size | sustained_repeated_communication | constant_size_repetition"
+    },
+    {
+      "flow": "10.0.0.50 -> 198.51.100.20:443/tcp",
+      "rule_score": 0.2,
+      "rf_score": 0.485,
+      "hybrid_score": 0.07142857142857144,
+      "predicted_label": "beacon",
+      "evidence": "sustained_repeated_communication"
+    }
+  ],
+  "skip_reasons": [
+    {
+      "reason": "unsupported_protocol",
+      "count": 1
+    }
+  ],
+  "output_files": [
+    {
+      "name": "alerts.csv",
+      "description": "Ranked suspicious flows with reasons and scoring context."
+    },
+    {
+      "name": "scored_flows.csv",
+      "description": "Rules, RF, and hybrid scores for every grouped flow."
+    },
+    {
+      "name": "run_summary.json",
+      "description": "Machine-readable ingestion diagnostics and threshold metadata."
+    },
+    {
+      "name": "report.md",
+      "description": "Analyst-readable report with conservative score interpretation."
+    }
+  ],
+  "previews": {
+    "report_md": "# Beaconing Batch Report\n\n- Input: `C:\\Users\\jarem\\beaconing detection system\\data\\operational\\fixtures\\netflow_demo.csv`\n- Input format: `netflow-ipfix-csv`\n- Detector: `rule_baseline_v2_hardened_final`\n- Mode: `rules_random_forest_hybrid`\n- Alert profile: `balanced`\n- Grouping key: `src_ip+dst_ip+dst_port+protocol+direction`\n- Source port policy: `captured_but_not_grouped`\n- Time windowing: `whole_file_batch`\n- Input events: 10\n- Scored flows: 2\n- Alerts: 2\n\n## Ingestion\n\n- Input rows: 11\n- Loaded events: 10\n- Skipped rows: 1\n- Skip reasons: unsupported_protocol=1\n\n## Outputs\n\n| File | Role |\n| --- | --- |\n| `alerts.csv` | Ranked alert rows exceeding the active decision policy. |\n| `scored_flows.csv` | All scored grouped flows with rules, RF, and hybrid score fields. |\n| `run_summary.json` | Machine-readable run manifest, scoring policy, and environment. |\n| `report.md` | Human-readable batch scoring report. |\n\n## Model\n\n- Model artifact: `C:\\Users\\jarem\\AppData\\Local\\Temp\\tmpigv5kolb\\model`\n- Model detector: `random_forest_v1`\n- Feature count: 29\n- Active threshold profile: `balanced`\n- Active RF threshold: 0.000\n- Validation strategy: `stratified_group_kfold`\n- Validation folds: 2\n- Validation F1 mean: 0.000\n- Validation false-positive-rate mean: 0.000\n- Calibration status: `not_applied_diagnostics_only`\n- Calibration Brier score: 0.2505\n- RF scores are uncalibrated model scores. Use them for ranking and threshold policies, not as direct probabilities.\n\n## Top Alerts\n\n| Rank | Severity | Score | Flow | Events | Reasons |\n| --- | --- | ---: | --- | ---: | --- |\n| 1 | medium | 1.357 | `10.0.0.5 -> 203.0.113.10:443/tcp` | 5 | inter-arrival CV 0.000 <= 0.300 | inter-arrival IQR 0.000s <= 30.000s | size CV 0.000 <= 0.300 | flow duration 240.000s >= 30.000s | repeated communication has nearly constant payload size | random forest score 0.575 >= 0.000 |\n| 2 | medium | 0.071 | `10.0.0.50 -> 198.51.100.20:443/tcp` | 5 | flow duration 353.000s >= 30.000s | random forest score 0.485 >= 0.000 |\n",
+    "run_summary_json": "{\n  \"input_format\": \"netflow-ipfix-csv\",\n  \"mode\": \"rules_random_forest_hybrid\",\n  \"profile\": \"balanced\",\n  \"input_rows\": 11,\n  \"loaded_events\": 10,\n  \"skipped_rows\": 1,\n  \"skip_reasons\": {\n    \"unsupported_protocol\": 1\n  },\n  \"threshold\": 0.0,\n  \"selection_method\": \"out_of_fold_grouped_validation\",\n  \"optimized_metric\": \"max_f1\",\n  \"tradeoff_summary\": {\n    \"precision\": 0.5,\n    \"recall\": 1.0,\n    \"f1\": 0.6666666666666666,\n    \"false_positive_rate\": 1.0\n  },\n  \"score_semantics\": {\n    \"score\": \"Rules score in rules-only mode. In hybrid mode, max(rule_ratio, rf_score_ratio).\",\n    \"rule_score\": \"Interpretable rule score before threshold comparison.\",\n    \"rf_score\": \"Uncalibrated Random Forest beacon score when a model artifact is loaded. Use it for ranking and thresholding, not as a calibrated probability.\",\n    \"hybrid_score\": \"Normalized ranking score used for final hybrid ordering.\",\n    \"confidence\": \"Threshold-relative display heuristic for alert severity; not a calibrated probability.\"\n  }\n}",
+    "alerts_csv": "rank,severity,confidence,detector_mode,score,threshold,hybrid_score,rule_score,rf_score,rf_threshold,src_ip,direction,dst_ip,dst_port,protocol,first_seen,last_seen,event_count,total_bytes,src_ports_seen,top_reasons,top_model_features\n1,medium,1.0,rules_random_forest_hybrid,1.3571428571428574,1.0,1.3571428571428574,3.8000000000000003,0.575,0.0,10.0.0.5,->,203.0.113.10,443,tcp,2026-01-01T00:00:00+00:00,2026-01-01T00:04:00+00:00,5,640,1111;2222;3333;4444;5555,inter-arrival CV 0.000 <= 0.300 | inter-arrival IQR 0.000s <= 30.000s | size CV 0.000 <= 0.300 | flow duration 240.000s >= 30.000s | repeated communication has nearly constant payload size | random forest score 0.575 >= 0.000,trimmed_interarrival_cv | interarrival_within_20pct_median_fraction | interarrival_within_10pct_median_fraction | interarrival_median_absolute_percentage_deviation | periodicity_score | inter_arrival_cv | near_median_interarrival_fraction | dominant_interval_fraction\n2,medium,0.07142857142857144,rules_random_forest_hybrid,0.07142857142857144,1.0,0.07142857142857144,0.2,0.485,0.0,10.0.0.50,->,198.51.100.20,443,tcp,2026-01-01T00:00:07+00:00,2026-01-01T00:06:00+00:00,5,3480,4100;4101;4102;4103;4104,flow duration 353.000s >= 30.000s | random forest score 0.485 >= 0.000,trimmed_interarrival_cv | interarrival_within_20pct_median_fraction | interarrival_within_10pct_median_fraction | interarrival_median_absolute_percentage_deviation | periodicity_score | inter_arrival_cv | near_median_interarrival_fraction | dominant_interval_fraction\n",
+    "scored_flows_csv": "predicted_label,detector_mode,score,threshold,hybrid_score,rule_predicted_label,rule_score,rule_threshold,rf_predicted_label,rf_score,rf_threshold,src_ip,direction,dst_ip,dst_port,protocol,first_seen,last_seen,event_count,total_bytes,mean_interarrival_seconds,inter_arrival_cv,periodicity_score,size_cv,src_ports_seen,triggered_rules,top_model_features\nbeacon,rules_random_forest_hybrid,1.3571428571428574,1.0,1.3571428571428574,beacon,3.8000000000000003,2.8,beacon,0.575,0.0,10.0.0.5,->,203.0.113.10,443,tcp,2026-01-01T00:00:00+00:00,2026-01-01T00:04:00+00:00,5,640,60.0,0.0,1.0,0.0,1111;2222;3333;4444;5555,low_interarrival_variability | compact_interarrival_spread | stable_payload_size | sustained_repeated_communication | constant_size_repetition,trimmed_interarrival_cv | interarrival_within_20pct_median_fraction | interarrival_within_10pct_median_fraction | interarrival_median_absolute_percentage_deviation | periodicity_score | inter_arrival_cv | near_median_interarrival_fraction | dominant_interval_fraction\nbeacon,rules_random_forest_hybrid,0.07142857142857144,1.0,0.07142857142857144,benign,0.2,2.8,beacon,0.485,0.0,10.0.0.50,->,198.51.100.20,443,tcp,2026-01-01T00:00:07+00:00,2026-01-01T00:06:00+00:00,5,3480,88.25,0.8059427851415378,0.0,0.8786527478708505,4100;4101;4102;4103;4104,sustained_repeated_communication,trimmed_interarrival_cv | interarrival_within_20pct_median_fraction | interarrival_within_10pct_median_fraction | interarrival_median_absolute_percentage_deviation | periodicity_score | inter_arrival_cv | near_median_interarrival_fraction | dominant_interval_fraction\n",
+    "training_report_md": "# Operational Model Training Report\n\n- Detector: `random_forest_v1`\n- Input contract: `normalized_csv_with_label`\n- Label column: `label`\n- Loaded events: 20\n- Training events: 20\n- Skipped unknown events: 0\n- Training flows: 4\n- Beacon flows: 2\n- Benign flows: 2\n- Feature count: 29\n- Prediction threshold: 0.65\n- Validation strategy: `stratified_group_kfold`\n- Validation folds: 2\n- Validation F1 mean: 0.000\n- Validation FPR mean: 0.000\n\n## Calibration Diagnostics\n\n- Calibration status: `not_applied_diagnostics_only`\n- Supports probability language: False\n- Out-of-fold predictions: 4\n- Brier score: 0.2505\n- Guidance: Use RF scores for ranking and thresholding, not as calibrated probabilities.\n\n| Score Bin | Count | Mean Score | Observed Beacon Rate |\n| --- | ---: | ---: | ---: |\n| 0.0-0.1 | 0 | n/a | n/a |\n| 0.1-0.2 | 0 | n/a | n/a |\n| 0.2-0.3 | 0 | n/a | n/a |\n| 0.3-0.4 | 0 | n/a | n/a |\n| 0.4-0.5 | 0 | n/a | n/a |\n| 0.5-0.6 | 4 | 0.522 | 0.500 |\n| 0.6-0.7 | 0 | n/a | n/a |\n| 0.7-0.8 | 0 | n/a | n/a |\n| 0.8-0.9 | 0 | n/a | n/a |\n| 0.9-1.0 | 0 | n/a | n/a |\n\n## Threshold Profiles\n\n| Profile | Threshold | Optimized Metric | F1 | Recall | FPR |\n| --- | ---: | --- | ---: | ---: | ---: |\n| conservative | 1.000 | min_false_positive_rate_then_precision | 0.000 | 0.000 | 0.000 |\n| balanced | 0.000 | max_f1 | 0.667 | 1.000 | 1.000 |\n| sensitive | 0.000 | max_recall_then_f1 | 0.667 | 1.000 | 1.000 |\n\n## Artifact Manifest\n\n| File | Role |\n| --- | --- |\n| `model.pkl` | Serialized supervised detector. Load only from a trusted source. |\n| `metadata.json` | Full model metadata, features, labels, validation, and environment. |\n| `artifact_manifest.json` | Concise manifest for artifact inspection and deployment checks. |\n| `training_summary.json` | Machine-readable training summary. |\n| `training_report.md` | Human-readable training report. |\n\n## Reproducibility\n\n- Python: `3.14.3`\n- Dependencies: `numpy==2.4.4`, `pandas==3.0.2`, `scikit-learn==1.8.0`, `matplotlib==3.10.8`\n\n## Notes\n\nThis model was trained from normalized labelled CSV rows. Dataset-specific\nsources should be adapted into that schema before training.\nOnly load model artifacts produced by a trusted run of this project.\nRF scores remain uncalibrated in this artifact; use them for ranking and\nthresholding, not as direct probabilities.\n"
+  },
+  "calibration": {
+    "status": "not_applied_diagnostics_only",
+    "brier_score": 0.25050625,
+    "recommendation": "Use RF scores for ranking and thresholding, not as calibrated probabilities."
+  },
+  "figures": [
+    {
+      "path": "../results/figures/final_story/01_synthetic_detector_comparison.png",
+      "title": "Controlled Synthetic Benchmark"
+    },
+    {
+      "path": "../results/figures/final_story/02_minimum_evidence_core_result.png",
+      "title": "Minimum-Evidence Result"
+    },
+    {
+      "path": "../results/figures/final_story/03_ctu_three_stage_comparison.png",
+      "title": "CTU-13 Transfer Story"
+    }
+  ]
+};
