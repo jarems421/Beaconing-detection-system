@@ -1,4 +1,4 @@
-window.OPERATIONAL_DEMO_DATA = {
+{
   "title": "Operational Beaconing Demo",
   "subtitle": "Checked-in NetFlow fixture scored through the operational hybrid workflow with skip diagnostics and conservative score wording.",
   "commands": [
@@ -134,16 +134,16 @@ window.OPERATIONAL_DEMO_DATA = {
   },
   "figures": [
     {
-      "path": "../results/figures/final_story/01_synthetic_detector_comparison.png",
+      "path": "/figures/01_synthetic_detector_comparison.png",
       "title": "Controlled Synthetic Benchmark"
     },
     {
-      "path": "../results/figures/final_story/02_minimum_evidence_core_result.png",
+      "path": "/figures/02_minimum_evidence_core_result.png",
       "title": "Minimum-Evidence Result"
     },
     {
-      "path": "../results/figures/final_story/03_ctu_three_stage_comparison.png",
+      "path": "/figures/03_ctu_three_stage_comparison.png",
       "title": "CTU-13 Transfer Story"
     }
   ]
-};
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -10,7 +11,10 @@ from beacon_detector.ops import run_batch_score, train_random_forest_model
 ROOT = Path(__file__).resolve().parents[1]
 TRAIN_PATH = ROOT / "data" / "operational" / "example_train.csv"
 INPUT_PATH = ROOT / "data" / "operational" / "fixtures" / "netflow_demo.csv"
-OUTPUT_PATH = ROOT / "docs" / "operational_demo_data.js"
+DOCS_OUTPUT_PATH = ROOT / "docs" / "operational_demo_data.js"
+APP_PUBLIC_DIR = ROOT / "demo-app" / "public"
+APP_DATA_PATH = APP_PUBLIC_DIR / "demo-data.json"
+APP_FIGURES_DIR = APP_PUBLIC_DIR / "figures"
 
 
 def main() -> None:
@@ -34,7 +38,7 @@ def main() -> None:
         )
         alerts = _rows(score.alerts_csv)
         scored_flows = _rows(score.scored_flows_csv)
-        bundle = {
+        docs_bundle = {
             "title": "Operational Beaconing Demo",
             "subtitle": (
                 "Checked-in NetFlow fixture scored through the operational hybrid "
@@ -129,11 +133,30 @@ def main() -> None:
             ],
         }
 
-    OUTPUT_PATH.write_text(
-        "window.OPERATIONAL_DEMO_DATA = " + json.dumps(bundle, indent=2) + ";\n",
+    DOCS_OUTPUT_PATH.write_text(
+        "window.OPERATIONAL_DEMO_DATA = " + json.dumps(docs_bundle, indent=2) + ";\n",
         encoding="utf-8",
     )
-    print(OUTPUT_PATH)
+    app_bundle = json.loads(json.dumps(docs_bundle))
+    app_bundle["figures"] = [
+        {
+            "path": "/figures/01_synthetic_detector_comparison.png",
+            "title": "Controlled Synthetic Benchmark",
+        },
+        {
+            "path": "/figures/02_minimum_evidence_core_result.png",
+            "title": "Minimum-Evidence Result",
+        },
+        {
+            "path": "/figures/03_ctu_three_stage_comparison.png",
+            "title": "CTU-13 Transfer Story",
+        },
+    ]
+    APP_PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
+    APP_DATA_PATH.write_text(json.dumps(app_bundle, indent=2) + "\n", encoding="utf-8")
+    _copy_figures()
+    print(DOCS_OUTPUT_PATH)
+    print(APP_DATA_PATH)
 
 
 def _rows(path: Path) -> list[dict[str, str]]:
@@ -198,6 +221,17 @@ def _summary_preview(summary: dict[str, object]) -> dict[str, object]:
         },
         "score_semantics": summary["score_semantics"],
     }
+
+
+def _copy_figures() -> None:
+    source_dir = ROOT / "results" / "figures" / "final_story"
+    APP_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    for figure_name in (
+        "01_synthetic_detector_comparison.png",
+        "02_minimum_evidence_core_result.png",
+        "03_ctu_three_stage_comparison.png",
+    ):
+        shutil.copy2(source_dir / figure_name, APP_FIGURES_DIR / figure_name)
 
 
 if __name__ == "__main__":

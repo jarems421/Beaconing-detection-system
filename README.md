@@ -114,6 +114,7 @@ those native features have discriminative power under scenario-aware splits.
 
 | Path | Purpose |
 | --- | --- |
+| `demo-app/` | Next.js app for the operational demo, ready for Vercel with `demo-app` as the root directory. |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
 | `docs/operational_demo.md` | Real CLI demo flow and static visual demo entry point. |
