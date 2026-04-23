@@ -37,6 +37,7 @@ OPS_MODEL_TRAINING_SUMMARY_FILE = "training_summary.json"
 OPS_MODEL_TRAINING_REPORT_FILE = "training_report.md"
 DEFAULT_OPERATIONAL_RF_THRESHOLD = 0.65
 DEFAULT_GROUPED_VALIDATION_FOLDS = 5
+DEFAULT_RELIABILITY_BIN_COUNT = 10
 ThresholdProfileName = Literal["conservative", "balanced", "sensitive"]
 
 
@@ -80,6 +81,26 @@ class OpsGroupedValidationResult:
     skipped_reason: str | None
     folds: tuple[OpsGroupedValidationFold, ...]
     predictions: tuple[OpsValidationPrediction, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class OpsCalibrationBin:
+    lower_bound: float
+    upper_bound: float
+    observation_count: int
+    mean_predicted_score: float | None
+    observed_beacon_rate: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class OpsCalibrationDiagnostics:
+    score_interpretation: str
+    probability_calibration: str
+    supports_probability_language: bool
+    recommendation: str
+    out_of_fold_prediction_count: int
+    brier_score: float | None
+    reliability_bins: tuple[OpsCalibrationBin, ...]
 
 
 def train_random_forest_model(
@@ -315,6 +336,7 @@ def _metadata(
     feature_rows: list[FlowFeatures],
     validation: OpsGroupedValidationResult,
 ) -> dict[str, Any]:
+    calibration = calibration_diagnostics(validation)
     return {
         "schema_version": OPS_MODEL_SCHEMA_VERSION,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -357,6 +379,7 @@ def _metadata(
         "feature_count": len(model.config.feature_names),
         "config": asdict(model.config),
         "validation": _validation_metadata(validation),
+        "calibration": asdict(calibration),
         "threshold_profiles": threshold_profile_metadata(validation),
         "runtime_environment": runtime_environment(),
         "persistence": {
@@ -398,6 +421,23 @@ def _training_report(metadata: dict[str, Any]) -> str:
             "- Validation FPR mean: "
             f"{metadata['validation']['metrics']['mean_false_positive_rate']:.3f}",
             "",
+            "## Calibration Diagnostics",
+            "",
+            f"- Calibration status: `{metadata['calibration']['probability_calibration']}`",
+            "- Supports probability language: "
+            f"{metadata['calibration']['supports_probability_language']}",
+            "- Out-of-fold predictions: "
+            f"{metadata['calibration']['out_of_fold_prediction_count']}",
+            f"- Brier score: {_brier_text(metadata['calibration']['brier_score'])}",
+            f"- Guidance: {metadata['calibration']['recommendation']}",
+            "",
+            "| Score Bin | Count | Mean Score | Observed Beacon Rate |",
+            "| --- | ---: | ---: | ---: |",
+            *[
+                _calibration_report_row(bin_row)
+                for bin_row in metadata["calibration"]["reliability_bins"]
+            ],
+            "",
             "## Threshold Profiles",
             "",
             "| Profile | Threshold | Optimized Metric | F1 | Recall | FPR |",
@@ -432,6 +472,8 @@ def _training_report(metadata: dict[str, Any]) -> str:
             "This model was trained from normalized labelled CSV rows. Dataset-specific",
             "sources should be adapted into that schema before training.",
             "Only load model artifacts produced by a trusted run of this project.",
+            "RF scores remain uncalibrated in this artifact; use them for ranking and",
+            "thresholding, not as direct probabilities.",
             "",
         ]
     )
@@ -579,6 +621,68 @@ def _select_threshold_profile(
     }
 
 
+def calibration_diagnostics(
+    validation: OpsGroupedValidationResult,
+    *,
+    bin_count: int = DEFAULT_RELIABILITY_BIN_COUNT,
+) -> OpsCalibrationDiagnostics:
+    if bin_count < 1:
+        raise ValueError("bin_count must be at least 1.")
+    if not validation.predictions:
+        return OpsCalibrationDiagnostics(
+            score_interpretation="uncalibrated_random_forest_score",
+            probability_calibration="not_applied_diagnostics_only",
+            supports_probability_language=False,
+            recommendation=(
+                "Use RF scores for ranking and thresholding, not as calibrated "
+                "probabilities."
+            ),
+            out_of_fold_prediction_count=0,
+            brier_score=None,
+            reliability_bins=(),
+        )
+
+    clipped_scores = [
+        min(max(float(prediction.score), 0.0), 1.0)
+        for prediction in validation.predictions
+    ]
+    targets = [
+        1.0 if prediction.true_label == "beacon" else 0.0
+        for prediction in validation.predictions
+    ]
+    buckets: list[list[tuple[float, float]]] = [[] for _ in range(bin_count)]
+    for score, target in zip(clipped_scores, targets, strict=True):
+        index = min(int(score * bin_count), bin_count - 1)
+        buckets[index].append((score, target))
+
+    reliability_bins = tuple(
+        OpsCalibrationBin(
+            lower_bound=index / bin_count,
+            upper_bound=(index + 1) / bin_count,
+            observation_count=len(bucket),
+            mean_predicted_score=_mean([score for score, _ in bucket]),
+            observed_beacon_rate=_mean([target for _, target in bucket]),
+        )
+        for index, bucket in enumerate(buckets)
+    )
+    return OpsCalibrationDiagnostics(
+        score_interpretation="uncalibrated_random_forest_score",
+        probability_calibration="not_applied_diagnostics_only",
+        supports_probability_language=False,
+        recommendation=(
+            "Use RF scores for ranking and thresholding, not as calibrated "
+            "probabilities."
+        ),
+        out_of_fold_prediction_count=len(validation.predictions),
+        brier_score=sum(
+            (score - target) ** 2
+            for score, target in zip(clipped_scores, targets, strict=True)
+        )
+        / len(clipped_scores),
+        reliability_bins=reliability_bins,
+    )
+
+
 def _threshold_profile(
     *,
     threshold: float,
@@ -613,6 +717,7 @@ def _artifact_manifest(metadata: dict[str, Any]) -> dict[str, Any]:
         "label_mapping": metadata["label_mapping"],
         "training_data": metadata["training_data"],
         "validation": metadata["validation"],
+        "calibration": metadata["calibration"],
         "threshold_profiles": metadata["threshold_profiles"],
         "runtime_environment": metadata["runtime_environment"],
         "persistence": metadata["persistence"],
@@ -665,6 +770,33 @@ def _package_version(package: str) -> str:
         return version(package)
     except PackageNotFoundError:
         return "not_installed"
+
+
+def _mean(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _brier_text(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:.4f}"
+
+
+def _calibration_report_row(bin_row: dict[str, Any]) -> str:
+    return (
+        f"| {bin_row['lower_bound']:.1f}-{bin_row['upper_bound']:.1f} | "
+        f"{bin_row['observation_count']} | "
+        f"{_format_optional_metric(bin_row['mean_predicted_score'])} | "
+        f"{_format_optional_metric(bin_row['observed_beacon_rate'])} |"
+    )
+
+
+def _format_optional_metric(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:.3f}"
 
 
 def _flow_key_text(row: Flow | FlowFeatures) -> str:

@@ -502,6 +502,17 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(len(metadata["validation"]["folds"]), 2)
         self.assertIn("mean_f1_score", metadata["validation"]["metrics"])
         self.assertEqual(
+            metadata["calibration"]["probability_calibration"],
+            "not_applied_diagnostics_only",
+        )
+        self.assertFalse(metadata["calibration"]["supports_probability_language"])
+        self.assertEqual(
+            metadata["calibration"]["out_of_fold_prediction_count"],
+            metadata["validation"]["out_of_fold_prediction_count"],
+        )
+        self.assertIsNotNone(metadata["calibration"]["brier_score"])
+        self.assertEqual(len(metadata["calibration"]["reliability_bins"]), 10)
+        self.assertEqual(
             set(metadata["threshold_profiles"]),
             {"conservative", "balanced", "sensitive"},
         )
@@ -514,7 +525,17 @@ class OperationalPipelineTests(unittest.TestCase):
         )
         self.assertEqual(manifest["artifact_type"], "operational_random_forest_model")
         self.assertEqual(manifest["label_mapping"]["unknown"], "skipped")
+        self.assertIn("calibration", manifest)
         self.assertIn("threshold_profiles", manifest)
+        training_report = training_outputs.training_report_md.read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("## Calibration Diagnostics", training_report)
+        self.assertIn("Brier score:", training_report)
+        self.assertIn(
+            "Use RF scores for ranking and thresholding, not as calibrated probabilities.",
+            training_report,
+        )
 
         outputs = run_batch_score(
             input_path=score_path,
@@ -531,9 +552,29 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(summary["model_detector_name"], "random_forest_v1")
         self.assertIn("model_metadata", summary)
         self.assertEqual(summary["model_metadata"]["label_mapping"]["beacon"], 1)
+        self.assertEqual(
+            summary["model_metadata"]["calibration"]["probability_calibration"],
+            "not_applied_diagnostics_only",
+        )
+        self.assertIn("rf_score", summary["score_semantics"])
+        self.assertIn("confidence", summary["score_semantics"])
+        self.assertIn(
+            "Uncalibrated Random Forest beacon score",
+            summary["score_semantics"]["rf_score"],
+        )
+        self.assertIn(
+            "not a calibrated probability",
+            summary["score_semantics"]["confidence"],
+        )
         scored_rows = _rows(outputs.scored_flows_csv)
         self.assertEqual(scored_rows[0]["detector_mode"], "rules_random_forest_hybrid")
         self.assertNotEqual(scored_rows[0]["rf_score"], "")
+        score_report = outputs.report_md.read_text(encoding="utf-8")
+        self.assertIn("Calibration status:", score_report)
+        self.assertIn(
+            "RF scores are uncalibrated model scores.",
+            score_report,
+        )
 
     def test_threshold_profiles_keep_expected_validation_tradeoff_order(self) -> None:
         profiles = threshold_profile_metadata(

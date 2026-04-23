@@ -405,11 +405,19 @@ def _run_summary(
         "score_semantics": {
             "score": (
                 "Rules score in rules-only mode. In hybrid mode, max(rule_ratio, "
-                "rf_probability_ratio)."
+                "rf_score_ratio)."
             ),
             "rule_score": "Interpretable rule score before threshold comparison.",
-            "rf_score": "Random Forest beacon probability when a model artifact is loaded.",
-            "hybrid_score": "Normalized score used for final hybrid ranking.",
+            "rf_score": (
+                "Uncalibrated Random Forest beacon score when a model artifact is "
+                "loaded. Use it for ranking and thresholding, not as a calibrated "
+                "probability."
+            ),
+            "hybrid_score": "Normalized ranking score used for final hybrid ordering.",
+            "confidence": (
+                "Threshold-relative display heuristic for alert severity; not a "
+                "calibrated probability."
+            ),
         },
         "output_manifest": _output_manifest(),
         "runtime_environment": runtime_environment(),
@@ -523,6 +531,7 @@ def _model_summary(model_artifact: OpsModelArtifact | None) -> dict[str, Any] | 
         "label_mapping": metadata.get("label_mapping"),
         "training_data": metadata.get("training_data"),
         "validation": metadata.get("validation"),
+        "calibration": metadata.get("calibration"),
         "runtime_environment": metadata.get("runtime_environment"),
         "persistence": metadata.get("persistence"),
         "threshold_profiles": metadata.get("threshold_profiles"),
@@ -550,6 +559,7 @@ def _model_report_lines(summary: dict[str, Any]) -> list[str]:
         ]
     validation = model.get("validation") or {}
     metrics = validation.get("metrics") or {}
+    calibration = model.get("calibration") or {}
     return [
         f"- Model artifact: `{summary['model_artifact_path']}`",
         f"- Model detector: `{model.get('detector_name')}`",
@@ -561,8 +571,12 @@ def _model_report_lines(summary: dict[str, Any]) -> list[str]:
         f"- Validation F1 mean: {float(metrics.get('mean_f1_score', 0.0)):.3f}",
         "- Validation false-positive-rate mean: "
         f"{float(metrics.get('mean_false_positive_rate', 0.0)):.3f}",
-        "- Model scores are global-feature Random Forest probabilities; "
-        "threshold profiles should be tuned on held-out grouped validation data.",
+        "- Calibration status: "
+        f"`{calibration.get('probability_calibration', 'not_reported')}`",
+        "- Calibration Brier score: "
+        f"{_format_optional_metric(calibration.get('brier_score'))}",
+        "- RF scores are uncalibrated model scores. Use them for ranking and "
+        "threshold policies, not as direct probabilities.",
     ]
 
 
@@ -685,6 +699,12 @@ def _skip_reason_text(skipped_row_reasons: dict[str, int]) -> str:
         f"{reason}={count}"
         for reason, count in sorted(skipped_row_reasons.items())
     )
+
+
+def _format_optional_metric(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.4f}"
 
 
 def _write_csv(
