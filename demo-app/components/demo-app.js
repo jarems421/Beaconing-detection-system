@@ -15,6 +15,14 @@ export default function DemoApp({ data }) {
   const [selectedAlertId, setSelectedAlertId] = useState(data.selected_alert_id);
   const [selectedPreview, setSelectedPreview] = useState("report_md");
 
+  const summary = useMemo(() => {
+    try {
+      return JSON.parse(data.previews.run_summary_json);
+    } catch {
+      return null;
+    }
+  }, [data.previews.run_summary_json]);
+
   const filteredAlerts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
@@ -40,23 +48,84 @@ export default function DemoApp({ data }) {
     filteredAlerts[0] ||
     null;
 
+  const topAlert = data.alerts[0] || null;
+  const threshold = summary?.threshold;
+  const tradeoff = summary?.tradeoff_summary || {};
+  const profile = summary?.profile || "balanced";
+
   return (
     <main className="page-shell">
       <section className="hero">
         <div className="hero-copy">
-          <div className="eyebrow">Operational Demo App</div>
-          <h1>{data.title}</h1>
-          <p className="hero-subtitle">{data.subtitle}</p>
+          <div className="eyebrow">Beacon Ops Live Demo</div>
+          <h1>Beaconing detection, scored end to end.</h1>
+          <p className="hero-subtitle">
+            Checked-in NetFlow/IPFIX traffic, hybrid rules and Random Forest scoring, visible skip
+            diagnostics, and analyst-readable outputs in one run.
+          </p>
+
           <div className="hero-badges">
             <Badge>NetFlow/IPFIX</Badge>
-            <Badge>Hybrid scoring</Badge>
-            <Badge>Threshold profiles</Badge>
-            <Badge>Diagnostics</Badge>
+            <Badge>Rules + RF</Badge>
+            <Badge>{profile} profile</Badge>
+            <Badge>Live artifacts</Badge>
+          </div>
+
+          <div className="hero-stat-strip">
+            <HeroStat
+              label="Alert count"
+              value={String(data.metrics.find((item) => item.label === "Alert count")?.value || 0)}
+            />
+            <HeroStat
+              label="Loaded events"
+              value={String(
+                data.metrics.find((item) => item.label === "Loaded events")?.value || 0
+              )}
+            />
+            <HeroStat
+              label="Skipped rows"
+              value={String(
+                data.metrics.find((item) => item.label === "Skipped rows")?.value || 0
+              )}
+            />
+            <HeroStat
+              label="Threshold"
+              value={threshold === undefined ? "n/a" : Number(threshold).toFixed(2)}
+            />
           </div>
         </div>
-        <div className="panel command-panel">
-          <div className="panel-kicker">Command path</div>
-          <pre className="code-block">{data.commands.join("\n\n")}</pre>
+
+        <div className="hero-side">
+          <div className="panel hero-alert-panel">
+            <div className="panel-kicker">Top candidate</div>
+            {topAlert ? (
+              <div className="hero-top-alert">
+                <div className="hero-top-flow">
+                  {topAlert.src} {"->"} {topAlert.dst}:{topAlert.port}/{topAlert.proto}
+                </div>
+                <div className="hero-top-meta">
+                  <SeverityBadge severity={topAlert.severity} />
+                  <Badge>{topAlert.event_count} events</Badge>
+                </div>
+                <div className="hero-top-score">
+                  <span>Hybrid score</span>
+                  <strong>{Number(topAlert.hybrid_score).toFixed(3)}</strong>
+                </div>
+                <div className="token-row">
+                  {topAlert.reasons.slice(0, 3).map((reason) => (
+                    <span className="token" key={reason}>
+                      {reason}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="panel command-panel">
+            <div className="panel-kicker">Command path</div>
+            <pre className="code-block">{data.commands.join("\n\n")}</pre>
+          </div>
         </div>
       </section>
 
@@ -73,22 +142,20 @@ export default function DemoApp({ data }) {
         <div className="panel">
           <div className="section-head">
             <div>
-              <h2>Workflow</h2>
-              <p>Ingest, score, and inspect in one batch-oriented path.</p>
+              <h2>Scoring policy</h2>
+              <p>Batch-first scoring with saved-model loading and thresholded ranking.</p>
             </div>
           </div>
-          <div className="workflow-list">
-            <WorkflowCard
-              title="Ingest"
-              text="Normalize logs into the shared scoring contract with visible skip handling."
+          <div className="policy-list">
+            <PolicyRow label="Mode" value={String(data.metrics.find((item) => item.label === "Mode")?.value || "hybrid")} />
+            <PolicyRow label="Profile" value={profile} />
+            <PolicyRow
+              label="Precision"
+              value={tradeoff.precision === undefined ? "n/a" : Number(tradeoff.precision).toFixed(2)}
             />
-            <WorkflowCard
-              title="Score"
-              text="Combine interpretable rules with a saved Random Forest score."
-            />
-            <WorkflowCard
-              title="Inspect"
-              text="Review flagged flows, report outputs, and score semantics together."
+            <PolicyRow
+              label="Recall"
+              value={tradeoff.recall === undefined ? "n/a" : Number(tradeoff.recall).toFixed(2)}
             />
           </div>
         </div>
@@ -113,14 +180,14 @@ export default function DemoApp({ data }) {
         <div className="panel">
           <div className="section-head">
             <div>
-              <h2>Calibration note</h2>
-              <p>Conservative wording stays attached to the model outputs.</p>
+              <h2>Score semantics</h2>
+              <p>Ranking language stays conservative and tied to the actual artifact metadata.</p>
             </div>
           </div>
           <div className="callout">
-            <div className="callout-label">status</div>
+            <div className="callout-label">Calibration status</div>
             <div className="callout-value">{data.calibration.status}</div>
-            <div className="callout-label">brier_score</div>
+            <div className="callout-label">Brier score</div>
             <div className="callout-value">
               {Number(data.calibration.brier_score).toFixed(4)}
             </div>
@@ -134,7 +201,7 @@ export default function DemoApp({ data }) {
           <div className="section-head">
             <div>
               <h2>Flagged flows</h2>
-              <p>Real alerts generated from the checked-in demo fixture.</p>
+              <p>Suspicious grouped flows from the checked-in demo fixture.</p>
             </div>
             <input
               className="search-input"
@@ -159,7 +226,7 @@ export default function DemoApp({ data }) {
                         {alert.src} {"->"} {alert.dst}:{alert.port}/{alert.proto}
                       </div>
                       <div className="alert-meta">
-                        {alert.mode} | {alert.event_count} events
+                        {alert.mode} | {alert.event_count} events | {alert.bytes} bytes
                       </div>
                     </div>
                     <div className="score-block">
@@ -187,11 +254,11 @@ export default function DemoApp({ data }) {
         </div>
 
         <div className="detail-stack">
-          <div className="panel">
+          <div className="panel sticky-panel">
             <div className="section-head">
               <div>
                 <h2>Selected alert</h2>
-                <p>Flow context, scoring detail, and triggered reasons.</p>
+                <p>Flow detail, evidence, and model context.</p>
               </div>
             </div>
             {selectedAlert ? (
@@ -208,20 +275,27 @@ export default function DemoApp({ data }) {
                       <Badge>{selectedAlert.mode}</Badge>
                     </div>
                   </div>
-                  <div className="score-block">
-                    <div className="score-label">RF score</div>
-                    <div className="score-value">
-                      {Number(selectedAlert.rf_score).toFixed(3)}
+                  <div className="score-stack">
+                    <div className="score-block emphasis">
+                      <div className="score-label">Hybrid score</div>
+                      <div className="score-value">
+                        {Number(selectedAlert.hybrid_score).toFixed(3)}
+                      </div>
+                    </div>
+                    <div className="score-block compact">
+                      <div className="score-label">RF score</div>
+                      <div className="score-mini-value">
+                        {Number(selectedAlert.rf_score).toFixed(3)}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="detail-columns">
                   <div className="data-block">
-                    <div>event_count: {selectedAlert.event_count}</div>
-                    <div>total_bytes: {selectedAlert.bytes}</div>
-                    <div>src_ports_seen: {selectedAlert.src_ports_seen}</div>
-                    <div>hybrid_score: {Number(selectedAlert.hybrid_score).toFixed(3)}</div>
+                    <KeyValue label="Event count" value={selectedAlert.event_count} />
+                    <KeyValue label="Total bytes" value={selectedAlert.bytes} />
+                    <KeyValue label="Source ports" value={selectedAlert.src_ports_seen} />
                   </div>
                   <div className="data-block">
                     <div className="detail-label">Top model features</div>
@@ -255,7 +329,7 @@ export default function DemoApp({ data }) {
             <div className="diagnostics-grid">
               {data.skip_reasons.map((item) => (
                 <div className="diag-card" key={item.reason}>
-                  <div className="diag-reason">{item.reason}</div>
+                  <div className="diag-reason">{formatReason(item.reason)}</div>
                   <div className="diag-count">{item.count}</div>
                 </div>
               ))}
@@ -345,6 +419,15 @@ function Badge({ children }) {
   return <span className="badge">{children}</span>;
 }
 
+function HeroStat({ label, value }) {
+  return (
+    <div className="hero-stat">
+      <div className="hero-stat-label">{label}</div>
+      <div className="hero-stat-value">{value}</div>
+    </div>
+  );
+}
+
 function SeverityBadge({ severity }) {
   return <span className={`badge severity severity-${severity}`}>{severity}</span>;
 }
@@ -356,4 +439,26 @@ function WorkflowCard({ text, title }) {
       <p>{text}</p>
     </div>
   );
+}
+
+function PolicyRow({ label, value }) {
+  return (
+    <div className="policy-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function KeyValue({ label, value }) {
+  return (
+    <div className="key-value-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function formatReason(reason) {
+  return reason.replaceAll("_", " ");
 }
