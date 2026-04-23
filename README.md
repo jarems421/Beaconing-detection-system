@@ -6,6 +6,11 @@ burst traffic, hard benign profiles, and CTU-13 public-data domain shift.
 **Headline result:** strong controlled synthetic performance does not automatically transfer to
 public flow data. Minimum evidence requirements and CTU-13 schema/domain shift are the key limits.
 
+## Branch Guide
+
+- `main`: preserved research branch for the finalized comparative study, benchmark narrative, and report-style framing.
+- `operational-system`: operational CLI branch for normalized CSV, Zeek, and NetFlow/IPFIX ingestion, hybrid scoring, manifests, diagnostics, and CI-tested workflows.
+
 ## At A Glance
 
 | Question | Short answer |
