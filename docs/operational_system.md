@@ -150,6 +150,8 @@ metadata.
 
 ## Demo Architecture
 
+![System overview](assets/system_overview.svg)
+
 In plain English:
 
 1. Start with an included input or upload a small file.

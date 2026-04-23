@@ -63,6 +63,8 @@ That split keeps the main answer easy to find while still letting you inspect th
 
 If you want the quick mental model, it is this:
 
+![System overview](docs/assets/system_overview.svg)
+
 1. You start with either an included input or a small uploaded file.
 2. The demo service validates the file and maps field aliases into one normalized event shape.
 3. The scorer groups repeated connections into candidate flows using the operational grouping key.
@@ -199,6 +201,13 @@ If you want the most human path through the repo, do this:
 2. Open `/workspace`
 3. Run one of the included inputs
 4. Walk through Results -> Explanation -> Diagnostics -> Files
+
+That path is deliberate:
+
+- `Results` answers "what did it flag?"
+- `Explanation` answers "why did it flag that?"
+- `Diagnostics` answers "how clean was the input?"
+- `Files` answers "what did the run actually write?"
 
 If you want the command-line path instead, the sections below cover the batch scorer and training
 commands.

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Beaconing Detection System Overview</title>
+  <desc id="desc">Diagram showing input logs flowing through normalization, grouping, feature extraction, rules and random forest scoring, outputs, and the demo workspace.</desc>
+  <defs>
+    <style>
+      .bg { fill: #0b1219; }
+      .panel { fill: #121c25; stroke: #274053; stroke-width: 2; rx: 8; ry: 8; }
+      .panel2 { fill: #0f1820; stroke: #33546b; stroke-width: 2; rx: 8; ry: 8; }
+      .text { fill: #eef5f8; font-family: Inter, Segoe UI, Arial, sans-serif; font-size: 22px; font-weight: 700; }
+      .body { fill: #9db1bf; font-family: Inter, Segoe UI, Arial, sans-serif; font-size: 16px; }
+      .title { fill: #eef5f8; font-family: Inter, Segoe UI, Arial, sans-serif; font-size: 34px; font-weight: 700; }
+      .sub { fill: #86cfff; font-family: Inter, Segoe UI, Arial, sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+      .line { stroke: #4ebeb0; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .line2 { stroke: #74c3ff; stroke-width: 4; fill: none; marker-end: url(#arrow2); }
+      .note { fill: #dbe8ee; font-family: Inter, Segoe UI, Arial, sans-serif; font-size: 18px; }
+      .chip { fill: #0f1820; stroke: #3e647d; stroke-width: 1.5; rx: 20; ry: 20; }
+      .chipText { fill: #d8e5ea; font-family: Inter, Segoe UI, Arial, sans-serif; font-size: 15px; font-weight: 600; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#4ebeb0" />
+    </marker>
+    <marker id="arrow2" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#74c3ff" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720" />
+
+  <text class="sub" x="72" y="74">SYSTEM OVERVIEW</text>
+  <text class="title" x="72" y="118">Beaconing Detection System</text>
+  <text class="body" x="72" y="152">A guided path from input logs to alerts, diagnostics, and demo inspection pages.</text>
+
+  <rect class="chip" x="72" y="182" width="170" height="38" />
+  <text class="chipText" x="101" y="206">normalized CSV</text>
+  <rect class="chip" x="256" y="182" width="150" height="38" />
+  <text class="chipText" x="304" y="206">Zeek conn.log</text>
+  <rect class="chip" x="420" y="182" width="196" height="38" />
+  <text class="chipText" x="447" y="206">NetFlow/IPFIX CSV</text>
+  <rect class="chip" x="630" y="182" width="173" height="38" />
+  <text class="chipText" x="659" y="206">included demo runs</text>
+
+  <rect class="panel" x="72" y="270" width="200" height="104" />
+  <text class="text" x="104" y="315">Input Logs</text>
+  <text class="body" x="104" y="344">One file at a time.</text>
+  <text class="body" x="104" y="366">Sample input or upload.</text>
+
+  <rect class="panel" x="342" y="270" width="230" height="104" />
+  <text class="text" x="374" y="315">Normalize</text>
+  <text class="body" x="374" y="344">Map aliases, validate fields,</text>
+  <text class="body" x="374" y="366">and count skipped rows.</text>
+
+  <rect class="panel" x="642" y="270" width="230" height="104" />
+  <text class="text" x="674" y="315">Group Flows</text>
+  <text class="body" x="674" y="344">src_ip + dst_ip + dst_port</text>
+  <text class="body" x="674" y="366">+ protocol + direction</text>
+
+  <rect class="panel" x="942" y="270" width="230" height="104" />
+  <text class="text" x="974" y="315">Extract Features</text>
+  <text class="body" x="974" y="344">Timing, burst, size, and</text>
+  <text class="body" x="974" y="366">periodicity signals.</text>
+
+  <path class="line" d="M272 322 L342 322" />
+  <path class="line" d="M572 322 L642 322" />
+  <path class="line" d="M872 322 L942 322" />
+
+  <rect class="panel2" x="252" y="466" width="250" height="116" />
+  <text class="text" x="284" y="512">Rules Baseline</text>
+  <text class="body" x="284" y="542">Interpretable thresholds for</text>
+  <text class="body" x="284" y="564">regular timing and stable size.</text>
+
+  <rect class="panel2" x="542" y="466" width="250" height="116" />
+  <text class="text" x="574" y="512">Random Forest</text>
+  <text class="body" x="574" y="542">Saved artifact with grouped</text>
+  <text class="body" x="574" y="564">validation-backed thresholds.</text>
+
+  <rect class="panel" x="832" y="450" width="360" height="148" />
+  <text class="text" x="864" y="496">Outputs and Demo Pages</text>
+  <text class="body" x="864" y="526">alerts.csv, scored_flows.csv, run_summary.json, report.md</text>
+  <text class="body" x="864" y="552">Workspace pages: Run -> Results -> Explanation -> Diagnostics -> Files</text>
+  <text class="body" x="864" y="578">Same payload shape for included runs and uploaded files.</text>
+
+  <path class="line2" d="M1057 374 L1057 424" />
+  <path class="line2" d="M1002 374 C1002 420 377 420 377 466" />
+  <path class="line2" d="M1112 374 C1112 420 667 420 667 466" />
+  <path class="line" d="M502 524 L542 524" />
+  <path class="line" d="M792 524 L832 524" />
+
+  <text class="note" x="72" y="654">What this means: the repo is not just a dashboard. It has a real scoring pipeline, real outputs, and a demo that walks a person through the result in stages.</text>
+</svg>
