@@ -1,6 +1,11 @@
 """Operational batch scoring layer for normalized network-flow records."""
 
-from .ingest import load_operational_events
+from .ingest import (
+    OperationalIngestDiagnostics,
+    OperationalLoadResult,
+    load_operational_events,
+    load_operational_input,
+)
 from .model import train_random_forest_model
 from .pipeline import run_batch_score, run_rules_only_score
 from .schema import (
@@ -18,11 +23,14 @@ __all__ = [
     "NORMALIZED_OPTIONAL_COLUMNS",
     "NORMALIZED_REQUIRED_COLUMNS",
     "OperationalEvent",
+    "OperationalIngestDiagnostics",
+    "OperationalLoadResult",
     "ValidationIssue",
     "ValidationResult",
     "export_synthetic_normalized_csv",
     "load_labelled_normalized_csv",
     "load_operational_events",
+    "load_operational_input",
     "run_batch_score",
     "run_rules_only_score",
     "train_random_forest_model",

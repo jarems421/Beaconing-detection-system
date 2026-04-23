@@ -69,10 +69,14 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(summary["mode"], "rules_only")
         self.assertEqual(summary["src_port_policy"], "captured_but_not_grouped")
         self.assertEqual(summary["alert_count"], 1)
+        self.assertEqual(summary["ingestion"]["input_row_count"], 5)
+        self.assertEqual(summary["ingestion"]["loaded_event_count"], 5)
+        self.assertEqual(summary["ingestion"]["skipped_row_count"], 0)
         self.assertIn("output_manifest", summary)
         self.assertIn("runtime_environment", summary)
         self.assertEqual(summary["output_manifest"][0]["path"], "alerts.csv")
         report = outputs.report_md.read_text(encoding="utf-8")
+        self.assertIn("## Ingestion", report)
         self.assertIn("## Outputs", report)
         self.assertIn("## Model", report)
 
@@ -289,6 +293,56 @@ class OperationalPipelineTests(unittest.TestCase):
             _rows(zeek_outputs.scored_flows_csv),
             _rows(netflow_outputs.scored_flows_csv),
         )
+
+    def test_netflow_score_summary_includes_ingestion_diagnostics(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_netflow_diagnostics")
+
+        outputs = run_rules_only_score(
+            input_path=FIXTURE_ROOT / "netflow_unsupported_protocol.csv",
+            input_format="netflow-ipfix-csv",
+            output_dir=output_dir / "out",
+        )
+
+        summary = json.loads(outputs.run_summary_json.read_text(encoding="utf-8"))
+        self.assertEqual(summary["ingestion"]["input_row_count"], 2)
+        self.assertEqual(summary["ingestion"]["loaded_event_count"], 1)
+        self.assertEqual(summary["ingestion"]["skipped_row_count"], 1)
+        self.assertEqual(
+            summary["ingestion"]["skipped_row_reasons"],
+            {"unsupported_protocol": 1},
+        )
+        report = outputs.report_md.read_text(encoding="utf-8")
+        self.assertIn("unsupported_protocol=1", report)
+
+    def test_score_fails_when_no_supported_events_are_loaded(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_no_supported_rows")
+        input_path = output_dir / "unsupported_only.csv"
+        _write_csv(
+            input_path,
+            [
+                {
+                    "first_switched": "1767225600.000000",
+                    "last_switched": "1767225601.000000",
+                    "srcaddr": "10.0.0.5",
+                    "srcport": "1111",
+                    "dstaddr": "203.0.113.10",
+                    "dstport": "443",
+                    "proto": "1",
+                    "bytes": "150",
+                    "pkts": "3",
+                }
+            ],
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            r"No supported operational events were loaded",
+        ):
+            run_rules_only_score(
+                input_path=input_path,
+                input_format="netflow-ipfix-csv",
+                output_dir=output_dir / "out",
+            )
 
     def test_cli_score_writes_outputs(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_cli")

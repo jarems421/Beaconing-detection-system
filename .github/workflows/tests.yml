@@ -47,6 +47,25 @@ jobs:
           test -f results/operational/ci_rules/run_summary.json
           test -f results/operational/ci_rules/report.md
 
+          beacon-ops score \
+            --input data/operational/fixtures/netflow_unsupported_protocol.csv \
+            --input-format netflow-ipfix-csv \
+            --output-dir results/operational/ci_netflow
+          test -f results/operational/ci_netflow/run_summary.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary = json.loads(
+              Path("results/operational/ci_netflow/run_summary.json").read_text()
+          )
+          assert summary["ingestion"]["input_row_count"] == 2
+          assert summary["ingestion"]["skipped_row_count"] == 1
+          assert summary["ingestion"]["skipped_row_reasons"] == {
+              "unsupported_protocol": 1
+          }
+          PY
+
           beacon-ops train-model \
             --train data/operational/example_train.csv \
             --output-dir models/operational/ci_rf

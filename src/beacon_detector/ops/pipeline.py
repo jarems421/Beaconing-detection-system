@@ -22,7 +22,11 @@ from beacon_detector.features import FlowFeatures, extract_features_from_flows
 from beacon_detector.flows import Flow, FlowKey
 
 from .grouping import OpsFlowContext, build_operational_flows
-from .ingest import OperationalInputFormat, load_operational_events
+from .ingest import (
+    OperationalIngestDiagnostics,
+    OperationalInputFormat,
+    load_operational_input,
+)
 from .model import (
     OpsModelArtifact,
     ThresholdProfileName,
@@ -124,7 +128,15 @@ def run_batch_score(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    events = load_operational_events(input_path, input_format=input_format)
+    load_result = load_operational_input(input_path, input_format=input_format)
+    events = load_result.events
+    if not events:
+        raise ValueError(
+            _no_loaded_events_message(
+                input_path=Path(input_path),
+                diagnostics=load_result.diagnostics,
+            )
+        )
     flows, context = build_operational_flows(events)
     feature_rows = extract_features_from_flows(flows)
     rule_results = detect_flow_feature_rows(feature_rows, thresholds=thresholds)
@@ -180,6 +192,7 @@ def run_batch_score(
         event_count=len(events),
         flow_count=len(flows),
         alert_count=len(alert_rows),
+        ingestion=load_result.diagnostics,
     )
     run_summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_md.write_text(
@@ -325,6 +338,7 @@ def _run_summary(
     event_count: int,
     flow_count: int,
     alert_count: int,
+    ingestion: OperationalIngestDiagnostics,
 ) -> dict[str, Any]:
     detector_mode = (
         "rules_random_forest_hybrid" if model_artifact is not None else "rules_only"
@@ -362,6 +376,12 @@ def _run_summary(
         "src_port_policy": "captured_but_not_grouped",
         "time_windowing": "whole_file_batch",
         "input_event_count": event_count,
+        "ingestion": {
+            "input_row_count": ingestion.input_row_count,
+            "loaded_event_count": ingestion.loaded_event_count,
+            "skipped_row_count": ingestion.skipped_row_count,
+            "skipped_row_reasons": ingestion.skipped_row_reasons,
+        },
         "scored_flow_count": flow_count,
         "alert_count": alert_count,
         "input_schema": {
@@ -415,6 +435,13 @@ def _report_markdown(
         f"- Input events: {summary['input_event_count']}",
         f"- Scored flows: {summary['scored_flow_count']}",
         f"- Alerts: {summary['alert_count']}",
+        "",
+        "## Ingestion",
+        "",
+        f"- Input rows: {summary['ingestion']['input_row_count']}",
+        f"- Loaded events: {summary['ingestion']['loaded_event_count']}",
+        f"- Skipped rows: {summary['ingestion']['skipped_row_count']}",
+        f"- Skip reasons: {_skip_reason_text(summary['ingestion']['skipped_row_reasons'])}",
         "",
         "## Outputs",
         "",
@@ -500,6 +527,19 @@ def _model_summary(model_artifact: OpsModelArtifact | None) -> dict[str, Any] | 
         "persistence": metadata.get("persistence"),
         "threshold_profiles": metadata.get("threshold_profiles"),
     }
+
+
+def _no_loaded_events_message(
+    *,
+    input_path: Path,
+    diagnostics: OperationalIngestDiagnostics,
+) -> str:
+    return (
+        f"No supported operational events were loaded from {input_path}. "
+        f"Input rows={diagnostics.input_row_count}, "
+        f"skipped_rows={diagnostics.skipped_row_count}, "
+        f"skip_reasons={_skip_reason_text(diagnostics.skipped_row_reasons)}."
+    )
 
 
 def _model_report_lines(summary: dict[str, Any]) -> list[str]:
@@ -636,6 +676,15 @@ def _confidence(score: float, threshold: float) -> float:
     if threshold <= 0:
         return 1.0
     return min(score / threshold, 1.0)
+
+
+def _skip_reason_text(skipped_row_reasons: dict[str, int]) -> str:
+    if not skipped_row_reasons:
+        return "none"
+    return ", ".join(
+        f"{reason}={count}"
+        for reason, count in sorted(skipped_row_reasons.items())
+    )
 
 
 def _write_csv(
