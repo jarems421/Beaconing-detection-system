@@ -408,8 +408,73 @@ h2 {
   margin-bottom: 16px;
 }
 
+.workspace-view-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.workspace-view-title {
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  line-height: 1.04;
+}
+
+.workspace-header-hint {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 14px;
+  color: var(--muted);
+  max-width: 300px;
+}
+
+.workspace-header-status {
+  justify-content: flex-end;
+  align-content: start;
+}
+
+.workspace-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+}
+
+.workspace-subnav-link {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.workspace-subnav-link.active {
+  border-color: rgba(42, 185, 168, 0.45);
+  background: rgba(42, 185, 168, 0.12);
+  color: var(--text);
+}
+
+.result-context-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .workspace-control-grid {
   grid-template-columns: 1fr;
+}
+
+.workspace-run-grid,
+.workspace-guidance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .workspace-grid {
@@ -425,8 +490,18 @@ h2 {
 .workspace-sidebar,
 .workspace-main,
 .primary-side,
-.workspace-lower-grid {
+.workspace-lower-grid,
+.workspace-side-stack,
+.workspace-main-stack,
+.workspace-single-column,
+.file-details-stack {
   display: grid;
+  gap: 16px;
+}
+
+.workspace-page-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
   gap: 16px;
 }
 
@@ -634,6 +709,40 @@ h2 {
   background: var(--panel-2);
 }
 
+.nested-file-panel {
+  padding: 12px;
+}
+
+.nested-file-panel summary {
+  font-weight: 600;
+}
+
+.workspace-empty-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.resume-card {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.resume-card h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.compact-preview {
+  min-height: 0;
+  max-height: 420px;
+}
+
 .backend-ready {
   border-color: rgba(42, 185, 168, 0.45);
   color: #9be4d8;
@@ -798,8 +907,12 @@ th {
 @media (max-width: 1120px) {
   .overview-hero,
   .workspace-header,
+  .workspace-view-header,
   .workspace-launcher-grid,
+  .workspace-run-grid,
+  .workspace-guidance-grid,
   .workspace-grid,
+  .workspace-page-grid,
   .primary-grid,
   .credibility-grid,
   .figure-grid,
@@ -820,6 +933,10 @@ th {
 
   .sticky-panel {
     position: static;
+  }
+
+  .result-context-panel {
+    flex-direction: column;
   }
 }
 
@@ -850,12 +967,23 @@ th {
   .section-head,
   .selected-top,
   .alert-row,
-  .featured-score {
+  .featured-score,
+  .result-context-panel,
+  .workspace-view-header {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
 
   .score-block {
     text-align: left;
+  }
+
+  .workspace-subnav {
+    padding: 10px;
+  }
+
+  .workspace-subnav-link {
+    width: 100%;
+    text-align: center;
   }
 }
