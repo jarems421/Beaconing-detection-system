@@ -45,6 +45,7 @@ data. Minimum evidence requirements and schema/domain shift remain the core limi
 
 The demo is meant to feel guided rather than crowded:
 
+- Live app: `https://beaconing-detection-system-wwuf.vercel.app`
 - `/` gives the short version of what the system does
 - `/workspace` starts the run
 - `/workspace/results` shows the main finding
