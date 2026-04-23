@@ -43,6 +43,12 @@ def main() -> None:
     )
     train_parser.add_argument("--label-column", default="label")
     train_parser.add_argument("--output-dir", required=True, type=Path)
+    train_parser.add_argument(
+        "--validation-folds",
+        type=int,
+        default=5,
+        help="Requested StratifiedGroupKFold split count for grouped validation.",
+    )
 
     score_parser = subparsers.add_parser(
         "score",
@@ -86,6 +92,7 @@ def main() -> None:
             train_paths=_expand_train_paths(args.train),
             label_column=args.label_column,
             output_dir=args.output_dir,
+            validation_folds=args.validation_folds,
         )
         print("Operational model training complete")
         print(f"model_dir: {outputs.model_dir}")

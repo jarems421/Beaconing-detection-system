@@ -132,6 +132,10 @@ class OperationalPipelineTests(unittest.TestCase):
         metadata = json.loads(training_outputs.metadata_json.read_text(encoding="utf-8"))
         self.assertEqual(metadata["input_contract"], "normalized_csv_with_label")
         self.assertEqual(metadata["skipped_unknown_event_count"], 1)
+        self.assertEqual(metadata["validation"]["strategy"], "stratified_group_kfold")
+        self.assertEqual(metadata["validation"]["executed_folds"], 2)
+        self.assertEqual(len(metadata["validation"]["folds"]), 2)
+        self.assertIn("mean_f1_score", metadata["validation"]["metrics"])
 
         outputs = run_batch_score(
             input_path=score_path,

@@ -61,6 +61,11 @@ Train a Random Forest model:
 beacon-ops train-model --train path/to/labelled_train.csv --output-dir models/operational/rf_v1
 ```
 
+`train-model` runs grouped validation with StratifiedGroupKFold when enough labelled groups are
+available. Group IDs use the operational grouping key, so related rows from the same candidate flow
+do not leak across train and validation folds. The requested fold count can be changed with
+`--validation-folds`.
+
 Score with that saved artifact:
 
 ```powershell
@@ -81,13 +86,12 @@ Every score run writes:
 ## Detector Roadmap
 
 The first operational slice is rules-first so ingestion, grouping, validation, and outputs stay
-stable. The Random Forest path is artifact-based: `train-model` writes a reusable model directory,
-and `score` loads that artifact instead of retraining.
+stable. The Random Forest path is artifact-based: `train-model` writes a reusable model directory
+with grouped validation metrics, and `score` loads that artifact instead of retraining.
 
 Next implementation steps:
 
-1. Add grouped validation metrics with non-overlapping groups.
-2. Add a synthetic-to-normalized export helper for demo/bootstrap models.
-3. Add NetFlow/IPFIX CSV ingestion.
-4. Add balanced and sensitive alert profiles.
-5. Keep LOF and statistical methods as diagnostics, not the main operational detector.
+1. Add a synthetic-to-normalized export helper for demo/bootstrap models.
+2. Harden output/report wording and add threshold profiles.
+3. Add NetFlow/IPFIX CSV ingestion when interoperability becomes a priority.
+4. Keep LOF and statistical methods as diagnostics, not the main operational detector.

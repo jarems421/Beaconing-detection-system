@@ -208,6 +208,10 @@ Train a Random Forest model from labelled normalized CSV rows:
 beacon-ops train-model --train data/operational/labelled_train.csv --output-dir models/operational/rf_v1
 ```
 
+Training artifacts include StratifiedGroupKFold validation metrics when there are enough benign and
+beacon groups. The groups use the same operational key as scoring:
+`src_ip + dst_ip + dst_port + protocol + direction`.
+
 Score with the saved model artifact loaded at runtime:
 
 ```powershell
