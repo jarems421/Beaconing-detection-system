@@ -56,6 +56,12 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(summary["mode"], "rules_only")
         self.assertEqual(summary["src_port_policy"], "captured_but_not_grouped")
         self.assertEqual(summary["alert_count"], 1)
+        self.assertIn("output_manifest", summary)
+        self.assertIn("runtime_environment", summary)
+        self.assertEqual(summary["output_manifest"][0]["path"], "alerts.csv")
+        report = outputs.report_md.read_text(encoding="utf-8")
+        self.assertIn("## Outputs", report)
+        self.assertIn("## Model", report)
 
     def test_zeek_conn_log_adapter_loads_operational_events(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_zeek")
@@ -120,6 +126,7 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertIn("Operational model training complete", completed.stdout)
         self.assertTrue((output_dir / "model" / "model.pkl").exists())
         self.assertTrue((output_dir / "model" / "metadata.json").exists())
+        self.assertTrue((output_dir / "model" / "artifact_manifest.json").exists())
 
     def test_cli_export_synthetic_writes_normalized_csv(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_cli_export_synthetic")
@@ -163,13 +170,23 @@ class OperationalPipelineTests(unittest.TestCase):
 
         self.assertTrue(training_outputs.model_file.exists())
         self.assertTrue(training_outputs.metadata_json.exists())
+        self.assertTrue(training_outputs.artifact_manifest_json.exists())
         metadata = json.loads(training_outputs.metadata_json.read_text(encoding="utf-8"))
         self.assertEqual(metadata["input_contract"], "normalized_csv_with_label")
+        self.assertEqual(metadata["label_mapping"]["beacon"], 1)
+        self.assertIn("runtime_environment", metadata)
+        self.assertIn("scikit-learn", metadata["runtime_environment"]["dependency_versions"])
+        self.assertEqual(metadata["persistence"]["format"], "pickle")
         self.assertEqual(metadata["skipped_unknown_event_count"], 1)
         self.assertEqual(metadata["validation"]["strategy"], "stratified_group_kfold")
         self.assertEqual(metadata["validation"]["executed_folds"], 2)
         self.assertEqual(len(metadata["validation"]["folds"]), 2)
         self.assertIn("mean_f1_score", metadata["validation"]["metrics"])
+        manifest = json.loads(
+            training_outputs.artifact_manifest_json.read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["artifact_type"], "operational_random_forest_model")
+        self.assertEqual(manifest["label_mapping"]["unknown"], "skipped")
 
         outputs = run_batch_score(
             input_path=score_path,
@@ -181,6 +198,8 @@ class OperationalPipelineTests(unittest.TestCase):
         summary = json.loads(outputs.run_summary_json.read_text(encoding="utf-8"))
         self.assertEqual(summary["mode"], "rules_random_forest_hybrid")
         self.assertEqual(summary["model_detector_name"], "random_forest_v1")
+        self.assertIn("model_metadata", summary)
+        self.assertEqual(summary["model_metadata"]["label_mapping"]["beacon"], 1)
         scored_rows = _rows(outputs.scored_flows_csv)
         self.assertEqual(scored_rows[0]["detector_mode"], "rules_random_forest_hybrid")
         self.assertNotEqual(scored_rows[0]["rf_score"], "")

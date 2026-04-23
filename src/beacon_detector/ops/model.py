@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import pickle
+import platform
+import sys
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +32,7 @@ from .schema import OperationalEvent, load_labelled_normalized_csv
 OPS_MODEL_SCHEMA_VERSION = 1
 OPS_MODEL_FILE = "model.pkl"
 OPS_MODEL_METADATA_FILE = "metadata.json"
+OPS_MODEL_ARTIFACT_MANIFEST_FILE = "artifact_manifest.json"
 OPS_MODEL_TRAINING_SUMMARY_FILE = "training_summary.json"
 OPS_MODEL_TRAINING_REPORT_FILE = "training_report.md"
 DEFAULT_OPERATIONAL_RF_THRESHOLD = 0.65
@@ -40,6 +44,7 @@ class OpsModelTrainingResult:
     model_dir: Path
     model_file: Path
     metadata_json: Path
+    artifact_manifest_json: Path
     training_summary_json: Path
     training_report_md: Path
 
@@ -112,6 +117,7 @@ def train_random_forest_model(
 
     model_file = model_dir / OPS_MODEL_FILE
     metadata_json = model_dir / OPS_MODEL_METADATA_FILE
+    artifact_manifest_json = model_dir / OPS_MODEL_ARTIFACT_MANIFEST_FILE
     training_summary_json = model_dir / OPS_MODEL_TRAINING_SUMMARY_FILE
     training_report_md = model_dir / OPS_MODEL_TRAINING_REPORT_FILE
 
@@ -127,7 +133,12 @@ def train_random_forest_model(
         feature_rows=feature_rows,
         validation=validation,
     )
+    artifact_manifest = _artifact_manifest(metadata)
     metadata_json.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    artifact_manifest_json.write_text(
+        json.dumps(artifact_manifest, indent=2),
+        encoding="utf-8",
+    )
     training_summary_json.write_text(
         json.dumps(metadata, indent=2),
         encoding="utf-8",
@@ -138,6 +149,7 @@ def train_random_forest_model(
         model_dir=model_dir,
         model_file=model_file,
         metadata_json=metadata_json,
+        artifact_manifest_json=artifact_manifest_json,
         training_summary_json=training_summary_json,
         training_report_md=training_report_md,
     )
@@ -288,11 +300,23 @@ def _metadata(
         "detector_name": model.detector_name,
         "detector_type": model.detector_type,
         "model_file": OPS_MODEL_FILE,
-        "source_files": [str(path) for path in train_paths],
         "input_contract": "normalized_csv_with_label",
         "label_column": label_column,
-        "accepted_labels": ["benign", "beacon"],
-        "skipped_labels": ["unknown"],
+        "label_mapping": {
+            "benign": 0,
+            "beacon": 1,
+            "unknown": "skipped",
+        },
+        "training_data": {
+            "source_files": [str(path) for path in train_paths],
+            "loaded_event_count": loaded_event_count,
+            "training_event_count": training_event_count,
+            "skipped_unknown_event_count": skipped_unknown_event_count,
+            "training_flow_count": flow_count,
+            "beacon_training_flow_count": model.beacon_training_flow_count,
+            "benign_training_flow_count": model.benign_training_flow_count,
+            "training_groups": [_flow_key_text(row) for row in feature_rows],
+        },
         "flow_grouping_key": [
             "src_ip",
             "dst_ip",
@@ -301,6 +325,7 @@ def _metadata(
             "direction",
         ],
         "src_port_policy": "captured_but_not_grouped",
+        "score_time_windowing": "whole_file_batch",
         "loaded_event_count": loaded_event_count,
         "training_event_count": training_event_count,
         "skipped_unknown_event_count": skipped_unknown_event_count,
@@ -308,9 +333,24 @@ def _metadata(
         "beacon_training_flow_count": model.beacon_training_flow_count,
         "benign_training_flow_count": model.benign_training_flow_count,
         "feature_names": list(model.config.feature_names),
+        "feature_count": len(model.config.feature_names),
         "config": asdict(model.config),
         "validation": _validation_metadata(validation),
-        "training_groups": [_flow_key_text(row) for row in feature_rows],
+        "runtime_environment": runtime_environment(),
+        "persistence": {
+            "format": "pickle",
+            "trusted_source_required": True,
+            "load_warning": (
+                "Only load model artifacts produced by a trusted run of this project."
+            ),
+            "version_compatibility": (
+                "Use the recorded dependency versions when reproducing or deploying."
+            ),
+        },
+        "intended_use": (
+            "Operational batch scoring of normalized flow/event CSV inputs. "
+            "Synthetic-trained artifacts are for demos and smoke tests only."
+        ),
     }
 
 
@@ -328,6 +368,7 @@ def _training_report(metadata: dict[str, Any]) -> str:
             f"- Training flows: {metadata['training_flow_count']}",
             f"- Beacon flows: {metadata['beacon_training_flow_count']}",
             f"- Benign flows: {metadata['benign_training_flow_count']}",
+            f"- Feature count: {metadata['feature_count']}",
             f"- Prediction threshold: {metadata['config']['prediction_threshold']}",
             f"- Validation strategy: `{metadata['validation']['strategy']}`",
             f"- Validation folds: {metadata['validation']['executed_folds']}",
@@ -335,8 +376,31 @@ def _training_report(metadata: dict[str, Any]) -> str:
             "- Validation FPR mean: "
             f"{metadata['validation']['metrics']['mean_false_positive_rate']:.3f}",
             "",
+            "## Artifact Manifest",
+            "",
+            "| File | Role |",
+            "| --- | --- |",
+            *[
+                f"| `{artifact['path']}` | {artifact['role']} |"
+                for artifact in _artifact_files()
+            ],
+            "",
+            "## Reproducibility",
+            "",
+            f"- Python: `{metadata['runtime_environment']['python_version']}`",
+            "- Dependencies: "
+            + ", ".join(
+                f"`{name}=={value}`"
+                for name, value in metadata["runtime_environment"][
+                    "dependency_versions"
+                ].items()
+            ),
+            "",
+            "## Notes",
+            "",
             "This model was trained from normalized labelled CSV rows. Dataset-specific",
             "sources should be adapted into that schema before training.",
+            "Only load model artifacts produced by a trusted run of this project.",
             "",
         ]
     )
@@ -361,6 +425,71 @@ def _validation_metadata(validation: OpsGroupedValidationResult) -> dict[str, An
             for fold in validation.folds
         ],
     }
+
+
+def _artifact_manifest(metadata: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": metadata["schema_version"],
+        "created_at_utc": metadata["created_at_utc"],
+        "artifact_type": "operational_random_forest_model",
+        "detector_name": metadata["detector_name"],
+        "input_contract": metadata["input_contract"],
+        "files": _artifact_files(),
+        "feature_names": metadata["feature_names"],
+        "label_mapping": metadata["label_mapping"],
+        "training_data": metadata["training_data"],
+        "validation": metadata["validation"],
+        "runtime_environment": metadata["runtime_environment"],
+        "persistence": metadata["persistence"],
+    }
+
+
+def _artifact_files() -> list[dict[str, str]]:
+    return [
+        {
+            "path": OPS_MODEL_FILE,
+            "role": "Serialized supervised detector. Load only from a trusted source.",
+        },
+        {
+            "path": OPS_MODEL_METADATA_FILE,
+            "role": "Full model metadata, features, labels, validation, and environment.",
+        },
+        {
+            "path": OPS_MODEL_ARTIFACT_MANIFEST_FILE,
+            "role": "Concise manifest for artifact inspection and deployment checks.",
+        },
+        {
+            "path": OPS_MODEL_TRAINING_SUMMARY_FILE,
+            "role": "Machine-readable training summary.",
+        },
+        {
+            "path": OPS_MODEL_TRAINING_REPORT_FILE,
+            "role": "Human-readable training report.",
+        },
+    ]
+
+
+def runtime_environment() -> dict[str, Any]:
+    return {
+        "python_version": sys.version.split()[0],
+        "platform": platform.platform(),
+        "dependency_versions": {
+            package: _package_version(package)
+            for package in (
+                "numpy",
+                "pandas",
+                "scikit-learn",
+                "matplotlib",
+            )
+        },
+    }
+
+
+def _package_version(package: str) -> str:
+    try:
+        return version(package)
+    except PackageNotFoundError:
+        return "not_installed"
 
 
 def _flow_key_text(row: Flow | FlowFeatures) -> str:

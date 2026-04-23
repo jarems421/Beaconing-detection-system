@@ -149,6 +149,7 @@ def main() -> None:
         print(f"model_dir: {outputs.model_dir}")
         print(f"model_file: {outputs.model_file}")
         print(f"metadata_json: {outputs.metadata_json}")
+        print(f"artifact_manifest_json: {outputs.artifact_manifest_json}")
         print(f"training_summary_json: {outputs.training_summary_json}")
         print(f"training_report_md: {outputs.training_report_md}")
         return

@@ -93,11 +93,16 @@ Every score run writes:
 | `run_summary.json` | Machine-readable run metadata. |
 | `report.md` | Short human-readable run report. |
 
+`run_summary.json` is the score-run manifest. It records the output roles, score semantics, grouping
+policy, runtime environment, and loaded-model metadata.
+
 ## Detector Roadmap
 
 The first operational slice is rules-first so ingestion, grouping, validation, and outputs stay
 stable. The Random Forest path is artifact-based: `train-model` writes a reusable model directory
 with grouped validation metrics, and `score` loads that artifact instead of retraining.
+The model artifact directory includes `artifact_manifest.json`, feature names, label mapping,
+training-source references, validation metrics, dependency versions, and a pickle trust warning.
 
 Next implementation steps:
 

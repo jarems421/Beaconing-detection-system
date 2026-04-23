@@ -23,7 +23,7 @@ from beacon_detector.flows import Flow, FlowKey
 
 from .grouping import OpsFlowContext, build_operational_flows
 from .ingest import OperationalInputFormat, load_operational_events
-from .model import OpsModelArtifact, load_ops_model_artifact
+from .model import OpsModelArtifact, load_ops_model_artifact, runtime_environment
 
 ALERT_COLUMNS = [
     "rank",
@@ -330,6 +330,7 @@ def _run_summary(
             if model_artifact is not None
             else None
         ),
+        "model_metadata": _model_summary(model_artifact),
         "alert_profile": "conservative",
         "prediction_threshold": thresholds.prediction_threshold,
         "flow_grouping_key": [
@@ -344,12 +345,35 @@ def _run_summary(
         "input_event_count": event_count,
         "scored_flow_count": flow_count,
         "alert_count": alert_count,
-        "outputs": [
-            "alerts.csv",
-            "scored_flows.csv",
-            "run_summary.json",
-            "report.md",
-        ],
+        "input_schema": {
+            "contract": "normalized_csv",
+            "required_columns": [
+                "timestamp",
+                "src_ip",
+                "direction",
+                "dst_ip",
+                "dst_port",
+                "protocol",
+                "total_bytes",
+            ],
+            "optional_columns": [
+                "src_port",
+                "duration_seconds",
+                "total_packets",
+                "label",
+            ],
+        },
+        "score_semantics": {
+            "score": (
+                "Rules score in rules-only mode. In hybrid mode, max(rule_ratio, "
+                "rf_probability_ratio)."
+            ),
+            "rule_score": "Interpretable rule score before threshold comparison.",
+            "rf_score": "Random Forest beacon probability when a model artifact is loaded.",
+            "hybrid_score": "Normalized score used for final hybrid ranking.",
+        },
+        "output_manifest": _output_manifest(),
+        "runtime_environment": runtime_environment(),
     }
 
 
@@ -366,9 +390,25 @@ def _report_markdown(
         f"- Detector: `{summary['detector_name']}`",
         f"- Mode: `{summary['mode']}`",
         f"- Alert profile: `{summary['alert_profile']}`",
+        f"- Grouping key: `{'+'.join(summary['flow_grouping_key'])}`",
+        f"- Source port policy: `{summary['src_port_policy']}`",
+        f"- Time windowing: `{summary['time_windowing']}`",
         f"- Input events: {summary['input_event_count']}",
         f"- Scored flows: {summary['scored_flow_count']}",
         f"- Alerts: {summary['alert_count']}",
+        "",
+        "## Outputs",
+        "",
+        "| File | Role |",
+        "| --- | --- |",
+        *[
+            f"| `{artifact['path']}` | {artifact['role']} |"
+            for artifact in summary["output_manifest"]
+        ],
+        "",
+        "## Model",
+        "",
+        *_model_report_lines(summary),
         "",
         "## Top Alerts",
         "",
@@ -400,6 +440,68 @@ def _report_markdown(
         )
     lines.append("")
     return "\n".join(lines)
+
+
+def _output_manifest() -> list[dict[str, Any]]:
+    return [
+        {
+            "path": "alerts.csv",
+            "role": "Ranked alert rows exceeding the active decision policy.",
+            "columns": ALERT_COLUMNS,
+        },
+        {
+            "path": "scored_flows.csv",
+            "role": "All scored grouped flows with rules, RF, and hybrid score fields.",
+            "columns": SCORED_COLUMNS,
+        },
+        {
+            "path": "run_summary.json",
+            "role": "Machine-readable run manifest, scoring policy, and environment.",
+        },
+        {
+            "path": "report.md",
+            "role": "Human-readable batch scoring report.",
+        },
+    ]
+
+
+def _model_summary(model_artifact: OpsModelArtifact | None) -> dict[str, Any] | None:
+    if model_artifact is None:
+        return None
+    metadata = model_artifact.metadata
+    return {
+        "detector_name": metadata.get("detector_name"),
+        "schema_version": metadata.get("schema_version"),
+        "feature_count": metadata.get("feature_count"),
+        "feature_names": metadata.get("feature_names"),
+        "label_mapping": metadata.get("label_mapping"),
+        "training_data": metadata.get("training_data"),
+        "validation": metadata.get("validation"),
+        "runtime_environment": metadata.get("runtime_environment"),
+        "persistence": metadata.get("persistence"),
+    }
+
+
+def _model_report_lines(summary: dict[str, Any]) -> list[str]:
+    model = summary.get("model_metadata")
+    if model is None:
+        return [
+            "No model artifact was loaded. This run used the conservative rules path.",
+        ]
+    validation = model.get("validation") or {}
+    metrics = validation.get("metrics") or {}
+    return [
+        f"- Model artifact: `{summary['model_artifact_path']}`",
+        f"- Model detector: `{model.get('detector_name')}`",
+        f"- Feature count: {model.get('feature_count')}",
+        f"- Validation strategy: `{validation.get('strategy')}`",
+        f"- Validation folds: {validation.get('executed_folds')}",
+        f"- Validation F1 mean: {float(metrics.get('mean_f1_score', 0.0)):.3f}",
+        "- Validation false-positive-rate mean: "
+        f"{float(metrics.get('mean_false_positive_rate', 0.0)):.3f}",
+        "- Model scores are global-feature Random Forest probabilities; "
+        "threshold profiles should be tuned on held-out grouped validation data.",
+    ]
 
 
 def _final_predicted_label(

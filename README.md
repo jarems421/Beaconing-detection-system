@@ -211,6 +211,8 @@ beacon-ops train-model --train data/operational/labelled_train.csv --output-dir 
 Training artifacts include StratifiedGroupKFold validation metrics when there are enough benign and
 beacon groups. The groups use the same operational key as scoring:
 `src_ip + dst_ip + dst_port + protocol + direction`.
+The model directory also includes an artifact manifest with feature names, label mapping, validation
+metrics, dependency versions, training-source references, and persistence warnings.
 
 Export synthetic traffic into that same training contract for bootstrap/demo runs:
 
@@ -235,6 +237,8 @@ beacon-ops score --input data/zeek/conn.log --input-format zeek-conn --output-di
 
 Without `--model-artifact`, scoring uses the conservative rules path. With `--model-artifact`,
 scoring loads the saved Random Forest artifact and writes hybrid rules + RF scores without retraining.
+The `run_summary.json` file is also the score-run manifest: it records output roles, score semantics,
+grouping policy, runtime environment, and loaded-model metadata.
 
 ## Reproduce Key Artifacts
 
