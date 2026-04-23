@@ -68,6 +68,8 @@ p {
 .hero,
 .overview-hero,
 .workspace-control-grid,
+.workspace-launcher-grid,
+.launcher-meta-grid,
 .workflow-strip,
 .metric-strip,
 .overview-grid,
@@ -415,6 +417,11 @@ h2 {
   margin-bottom: 16px;
 }
 
+.workspace-launcher-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .workspace-sidebar,
 .workspace-main,
 .primary-side,
@@ -576,6 +583,10 @@ h2 {
   margin-top: 16px;
 }
 
+.launcher-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .status-banner {
   margin-top: 14px;
   color: var(--text);
@@ -584,6 +595,43 @@ h2 {
 .empty-state {
   color: var(--muted);
   line-height: 1.6;
+}
+
+.result-placeholder,
+.result-summary-banner {
+  margin-bottom: 16px;
+}
+
+.result-summary-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.collapsible-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+  list-style: none;
+}
+
+.collapsible-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-panel[open] summary {
+  margin-bottom: 14px;
+}
+
+.details-body {
+  display: grid;
+  gap: 16px;
+}
+
+.nested-panel {
+  box-shadow: none;
+  background: var(--panel-2);
 }
 
 .backend-ready {
@@ -750,6 +798,7 @@ th {
 @media (max-width: 1120px) {
   .overview-hero,
   .workspace-header,
+  .workspace-launcher-grid,
   .workspace-grid,
   .primary-grid,
   .credibility-grid,
@@ -791,7 +840,8 @@ th {
   .metric-strip,
   .diagnostic-topline,
   .hero-score-grid,
-  .workspace-meta-grid {
+  .workspace-meta-grid,
+  .launcher-meta-grid {
     grid-template-columns: 1fr;
   }
 

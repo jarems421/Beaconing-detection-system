@@ -58,6 +58,19 @@ class DemoServiceTests(unittest.TestCase):
         self.assertIn("previews", payload)
         self.assertIn("score_semantics", payload)
 
+    def test_score_scenario_runs_built_in_input(self) -> None:
+        response = self.client.post(
+            "/score-scenario",
+            json={"scenario_id": "suspicious-netflow", "profile": "balanced"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["source"]["kind"], "sample")
+        self.assertEqual(payload["scenario"]["id"], "suspicious-netflow")
+        self.assertEqual(payload["scenario"]["input_format"], "netflow-ipfix-csv")
+        self.assertGreaterEqual(payload["summary"]["loaded_events"], 1)
+
     def test_score_accepts_zeek_conn_upload(self) -> None:
         response = self.client.post(
             "/score",
@@ -123,6 +136,15 @@ class DemoServiceTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn(".binetflow", response.json()["detail"])
+
+    def test_score_scenario_rejects_unknown_id(self) -> None:
+        response = self.client.post(
+            "/score-scenario",
+            json={"scenario_id": "does-not-exist", "profile": "balanced"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("Unknown built-in scenario", response.json()["detail"])
 
     def test_score_reports_clear_error_for_no_supported_rows(self) -> None:
         payload = io.BytesIO(

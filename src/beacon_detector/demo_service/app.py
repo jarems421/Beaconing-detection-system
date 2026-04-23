@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from beacon_detector.demo_payload import DemoScenario, build_demo_payload
@@ -32,6 +32,7 @@ ALLOWED_PROFILES: tuple[ThresholdProfileName, ...] = (
     "balanced",
     "sensitive",
 )
+SCENARIOS_BY_ID = {scenario.id: scenario for scenario in DEMO_SCENARIOS}
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,4 +201,51 @@ async def score_upload(
         previews = demo_payload["previews"]
         assert isinstance(previews, dict)
         previews["report_md"] = previews["report_md"].replace(str(upload_path), filename)
+    return demo_payload
+
+
+@app.post("/score-scenario")
+def score_scenario(
+    request: Request,
+    scenario_id: str = Body(..., embed=True),
+    profile: str = Body("balanced", embed=True),
+) -> dict[str, object]:
+    state = _state(request)
+    if profile not in ALLOWED_PROFILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"profile must be one of: {', '.join(ALLOWED_PROFILES)}",
+        )
+    scenario = SCENARIOS_BY_ID.get(scenario_id)
+    if scenario is None:
+        raise HTTPException(status_code=404, detail=f"Unknown built-in scenario: {scenario_id}")
+
+    with tempfile.TemporaryDirectory(prefix="beacon_demo_scenario_") as temp_dir:
+        temp_root = Path(temp_dir)
+        try:
+            score_outputs = run_batch_score(
+                input_path=scenario.input_path,
+                input_format=scenario.input_format,
+                output_dir=temp_root / "run",
+                model_artifact_path=state.training.model_dir,
+                threshold_profile=profile,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        demo_payload = build_demo_payload(
+            training=state.training,
+            score=score_outputs,
+            scenario=DemoScenario(
+                id=scenario.id,
+                label=scenario.label,
+                description=scenario.description,
+                input_path=scenario.input_path,
+                input_format=scenario.input_format,
+                profile=profile,
+                category=scenario.category,
+            ),
+            source_kind="sample",
+            source_label=scenario.label,
+        )
     return demo_payload
