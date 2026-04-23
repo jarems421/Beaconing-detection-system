@@ -16,6 +16,11 @@ from beacon_detector.ops import (
     train_random_forest_model,
 )
 from beacon_detector.ops.ingest import load_zeek_conn_log
+from beacon_detector.ops.model import (
+    OpsGroupedValidationResult,
+    OpsValidationPrediction,
+    threshold_profile_metadata,
+)
 from beacon_detector.ops.schema import validate_normalized_csv
 
 
@@ -215,6 +220,52 @@ class OperationalPipelineTests(unittest.TestCase):
         scored_rows = _rows(outputs.scored_flows_csv)
         self.assertEqual(scored_rows[0]["detector_mode"], "rules_random_forest_hybrid")
         self.assertNotEqual(scored_rows[0]["rf_score"], "")
+
+    def test_threshold_profiles_keep_expected_validation_tradeoff_order(self) -> None:
+        profiles = threshold_profile_metadata(
+            OpsGroupedValidationResult(
+                strategy="stratified_group_kfold",
+                requested_folds=3,
+                executed_folds=3,
+                skipped_reason=None,
+                folds=(),
+                predictions=(
+                    OpsValidationPrediction(1, "benign", 0.10),
+                    OpsValidationPrediction(1, "benign", 0.20),
+                    OpsValidationPrediction(2, "benign", 0.30),
+                    OpsValidationPrediction(2, "benign", 0.40),
+                    OpsValidationPrediction(2, "benign", 0.45),
+                    OpsValidationPrediction(3, "benign", 0.50),
+                    OpsValidationPrediction(3, "benign", 0.70),
+                    OpsValidationPrediction(1, "beacon", 0.25),
+                    OpsValidationPrediction(1, "beacon", 0.60),
+                    OpsValidationPrediction(2, "beacon", 0.65),
+                    OpsValidationPrediction(3, "beacon", 0.80),
+                ),
+            )
+        )
+
+        conservative = profiles["conservative"]
+        balanced = profiles["balanced"]
+        sensitive = profiles["sensitive"]
+        self.assertGreaterEqual(conservative["threshold"], balanced["threshold"])
+        self.assertLessEqual(sensitive["threshold"], balanced["threshold"])
+        self.assertGreaterEqual(
+            sensitive["metrics"]["recall"],
+            conservative["metrics"]["recall"],
+        )
+        self.assertGreaterEqual(
+            len(
+                {
+                    conservative["threshold"],
+                    balanced["threshold"],
+                    sensitive["threshold"],
+                }
+            ),
+            2,
+        )
+        for profile in profiles.values():
+            self.assertIn("selection_method", profile)
 
     def test_synthetic_export_writes_labelled_normalized_training_csv(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_synthetic_export")
