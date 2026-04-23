@@ -12,6 +12,7 @@ from .schema import (
     load_labelled_normalized_csv,
     validate_normalized_csv,
 )
+from .synthetic import export_synthetic_normalized_csv
 
 __all__ = [
     "NORMALIZED_OPTIONAL_COLUMNS",
@@ -19,6 +20,7 @@ __all__ = [
     "OperationalEvent",
     "ValidationIssue",
     "ValidationResult",
+    "export_synthetic_normalized_csv",
     "load_labelled_normalized_csv",
     "load_operational_events",
     "run_batch_score",

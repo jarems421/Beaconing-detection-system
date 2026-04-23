@@ -212,6 +212,15 @@ Training artifacts include StratifiedGroupKFold validation metrics when there ar
 beacon groups. The groups use the same operational key as scoring:
 `src_ip + dst_ip + dst_port + protocol + direction`.
 
+Export synthetic traffic into that same training contract for bootstrap/demo runs:
+
+```powershell
+beacon-ops export-synthetic --output data/operational/synthetic_train.csv --seed 7
+```
+
+Synthetic exports are useful for smoke tests and demonstrations, but they are not deployment-ready
+training evidence.
+
 Score with the saved model artifact loaded at runtime:
 
 ```powershell

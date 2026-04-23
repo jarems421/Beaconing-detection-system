@@ -8,7 +8,13 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from beacon_detector.ops import run_batch_score, run_rules_only_score, train_random_forest_model
+from beacon_detector.data import SyntheticTrafficConfig
+from beacon_detector.ops import (
+    export_synthetic_normalized_csv,
+    run_batch_score,
+    run_rules_only_score,
+    train_random_forest_model,
+)
 from beacon_detector.ops.ingest import load_zeek_conn_log
 from beacon_detector.ops.schema import validate_normalized_csv
 
@@ -115,6 +121,34 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertTrue((output_dir / "model" / "model.pkl").exists())
         self.assertTrue((output_dir / "model" / "metadata.json").exists())
 
+    def test_cli_export_synthetic_writes_normalized_csv(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_cli_export_synthetic")
+        output_path = output_dir / "synthetic.csv"
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "beacon_detector.cli.ops",
+                "export-synthetic",
+                "--output",
+                str(output_path),
+                "--normal-event-count",
+                "24",
+                "--normal-flow-count",
+                "4",
+                "--beacon-event-count",
+                "6",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertIn("Synthetic normalized export complete", completed.stdout)
+        self.assertTrue(output_path.exists())
+        self.assertTrue(output_path.with_suffix(".metadata.json").exists())
+
     def test_train_model_and_score_with_saved_artifact(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_model")
         train_path = output_dir / "train.csv"
@@ -150,6 +184,38 @@ class OperationalPipelineTests(unittest.TestCase):
         scored_rows = _rows(outputs.scored_flows_csv)
         self.assertEqual(scored_rows[0]["detector_mode"], "rules_random_forest_hybrid")
         self.assertNotEqual(scored_rows[0]["rf_score"], "")
+
+    def test_synthetic_export_writes_labelled_normalized_training_csv(self) -> None:
+        output_dir = _clean_output_dir("tests/.tmp/ops_synthetic_export")
+        output_path = output_dir / "synthetic_normalized.csv"
+
+        export = export_synthetic_normalized_csv(
+            output_path=output_path,
+            config=SyntheticTrafficConfig(
+                start_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                seed=99,
+                normal_event_count=24,
+                normal_flow_count=4,
+                normal_events_per_flow_min=4,
+                normal_events_per_flow_max=6,
+                beacon_event_count=6,
+            ),
+        )
+
+        self.assertTrue(export.output_csv.exists())
+        self.assertTrue(export.metadata_json.exists())
+        validation = validate_normalized_csv(output_path, require_label=True)
+        self.assertTrue(validation.is_valid)
+        rows = _rows(output_path)
+        self.assertIn("scenario_name", rows[0])
+        self.assertIn("benign", {row["label"] for row in rows})
+        self.assertIn("beacon", {row["label"] for row in rows})
+
+        training_outputs = train_random_forest_model(
+            train_paths=[output_path],
+            output_dir=output_dir / "model",
+        )
+        self.assertTrue(training_outputs.model_file.exists())
 
 
 def _write_periodic_normalized_csv(path: Path) -> None:

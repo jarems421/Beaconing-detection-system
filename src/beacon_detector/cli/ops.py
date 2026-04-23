@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from glob import glob
 from pathlib import Path
 
+from beacon_detector.data import SyntheticTrafficConfig
 from beacon_detector.ops import (
+    export_synthetic_normalized_csv,
     run_batch_score,
     train_random_forest_model,
     validate_normalized_csv,
@@ -30,6 +33,30 @@ def main() -> None:
         help="Require a label column for model training input validation.",
     )
     validate_parser.add_argument("--label-column", default="label")
+
+    export_parser = subparsers.add_parser(
+        "export-synthetic",
+        help="Export synthetic traffic into the labelled normalized CSV contract.",
+    )
+    export_parser.add_argument("--output", required=True, type=Path)
+    export_parser.add_argument("--metadata-output", default=None, type=Path)
+    export_parser.add_argument("--seed", default=7, type=int)
+    export_parser.add_argument(
+        "--start-time",
+        default="2026-01-01T00:00:00+00:00",
+        help="ISO-8601 synthetic start time.",
+    )
+    export_parser.add_argument("--normal-event-count", default=160, type=int)
+    export_parser.add_argument("--normal-flow-count", default=6, type=int)
+    export_parser.add_argument("--beacon-event-count", default=40, type=int)
+    export_parser.add_argument("--duration-seconds", default=3600, type=int)
+    export_parser.add_argument("--mean-interval-seconds", default=60.0, type=float)
+    export_parser.add_argument("--jitter-fraction", default=0.35, type=float)
+    export_parser.add_argument(
+        "--exclude-time-size-jitter",
+        action="store_true",
+        help="Exclude the harder time-and-size-jittered synthetic beacon scenario.",
+    )
 
     train_parser = subparsers.add_parser(
         "train-model",
@@ -87,6 +114,30 @@ def main() -> None:
             print(f"- {location}{column}: {issue.message}")
         raise SystemExit(0 if result.is_valid else 1)
 
+    if args.command == "export-synthetic":
+        outputs = export_synthetic_normalized_csv(
+            output_path=args.output,
+            metadata_path=args.metadata_output,
+            include_time_size_jitter=not args.exclude_time_size_jitter,
+            config=SyntheticTrafficConfig(
+                start_time=_parse_timestamp(args.start_time),
+                seed=args.seed,
+                normal_event_count=args.normal_event_count,
+                normal_flow_count=args.normal_flow_count,
+                beacon_event_count=args.beacon_event_count,
+                duration_seconds=args.duration_seconds,
+                mean_interval_seconds=args.mean_interval_seconds,
+                jitter_fraction=args.jitter_fraction,
+            ),
+        )
+        print("Synthetic normalized export complete")
+        print(f"output_csv: {outputs.output_csv}")
+        print(f"metadata_json: {outputs.metadata_json}")
+        print(f"event_count: {outputs.event_count}")
+        print(f"benign_event_count: {outputs.benign_event_count}")
+        print(f"beacon_event_count: {outputs.beacon_event_count}")
+        return
+
     if args.command == "train-model":
         outputs = train_random_forest_model(
             train_paths=_expand_train_paths(args.train),
@@ -124,6 +175,15 @@ def _expand_train_paths(values: list[str]) -> list[Path]:
         else:
             paths.append(Path(value))
     return paths
+
+
+def _parse_timestamp(value: str) -> datetime:
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 if __name__ == "__main__":

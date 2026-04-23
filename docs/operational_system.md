@@ -66,6 +66,16 @@ available. Group IDs use the operational grouping key, so related rows from the 
 do not leak across train and validation folds. The requested fold count can be changed with
 `--validation-folds`.
 
+Export synthetic traffic into the same labelled normalized contract:
+
+```powershell
+beacon-ops export-synthetic --output data/operational/synthetic_train.csv --seed 7
+```
+
+The synthetic exporter is a bootstrap/demo source. It does not create a separate training path:
+synthetic data is generated, normalized, and then passed through `train-model` like any other labelled
+CSV.
+
 Score with that saved artifact:
 
 ```powershell
@@ -91,7 +101,7 @@ with grouped validation metrics, and `score` loads that artifact instead of retr
 
 Next implementation steps:
 
-1. Add a synthetic-to-normalized export helper for demo/bootstrap models.
-2. Harden output/report wording and add threshold profiles.
+1. Harden output/report wording and add training/scoring manifest polish.
+2. Add conservative, balanced, and sensitive threshold profiles.
 3. Add NetFlow/IPFIX CSV ingestion when interoperability becomes a priority.
 4. Keep LOF and statistical methods as diagnostics, not the main operational detector.
