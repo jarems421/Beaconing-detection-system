@@ -23,7 +23,13 @@ from beacon_detector.flows import Flow, FlowKey
 
 from .grouping import OpsFlowContext, build_operational_flows
 from .ingest import OperationalInputFormat, load_operational_events
-from .model import OpsModelArtifact, load_ops_model_artifact, runtime_environment
+from .model import (
+    OpsModelArtifact,
+    ThresholdProfileName,
+    load_ops_model_artifact,
+    model_with_threshold_profile,
+    runtime_environment,
+)
 
 ALERT_COLUMNS = [
     "rank",
@@ -94,12 +100,14 @@ def run_rules_only_score(
     input_format: OperationalInputFormat,
     output_dir: str | Path,
     thresholds: RuleThresholds | None = None,
+    threshold_profile: ThresholdProfileName = "conservative",
 ) -> OpsScoreOutputs:
     return run_batch_score(
         input_path=input_path,
         input_format=input_format,
         output_dir=output_dir,
         thresholds=thresholds,
+        threshold_profile=threshold_profile,
     )
 
 
@@ -110,6 +118,7 @@ def run_batch_score(
     output_dir: str | Path,
     thresholds: RuleThresholds | None = None,
     model_artifact_path: str | Path | None = None,
+    threshold_profile: ThresholdProfileName = "conservative",
 ) -> OpsScoreOutputs:
     thresholds = thresholds or HIGH_PRECISION_RULE_BASELINE_THRESHOLDS
     output_path = Path(output_dir)
@@ -125,7 +134,10 @@ def run_batch_score(
         else None
     )
     supervised_results = (
-        detect_flow_feature_rows_supervised(feature_rows, model=model_artifact.model)
+        detect_flow_feature_rows_supervised(
+            feature_rows,
+            model=model_with_threshold_profile(model_artifact, threshold_profile),
+        )
         if model_artifact is not None
         else []
     )
@@ -164,6 +176,7 @@ def run_batch_score(
         thresholds=thresholds,
         model_artifact=model_artifact,
         model_artifact_path=Path(model_artifact_path) if model_artifact_path else None,
+        threshold_profile=threshold_profile,
         event_count=len(events),
         flow_count=len(flows),
         alert_count=len(alert_rows),
@@ -308,6 +321,7 @@ def _run_summary(
     thresholds: RuleThresholds,
     model_artifact: OpsModelArtifact | None,
     model_artifact_path: Path | None,
+    threshold_profile: ThresholdProfileName,
     event_count: int,
     flow_count: int,
     alert_count: int,
@@ -331,7 +345,12 @@ def _run_summary(
             else None
         ),
         "model_metadata": _model_summary(model_artifact),
-        "alert_profile": "conservative",
+        "alert_profile": threshold_profile,
+        "threshold_profile": _threshold_profile_summary(
+            model_artifact,
+            threshold_profile,
+            thresholds,
+        ),
         "prediction_threshold": thresholds.prediction_threshold,
         "flow_grouping_key": [
             "src_ip",
@@ -479,6 +498,7 @@ def _model_summary(model_artifact: OpsModelArtifact | None) -> dict[str, Any] | 
         "validation": metadata.get("validation"),
         "runtime_environment": metadata.get("runtime_environment"),
         "persistence": metadata.get("persistence"),
+        "threshold_profiles": metadata.get("threshold_profiles"),
     }
 
 
@@ -494,6 +514,8 @@ def _model_report_lines(summary: dict[str, Any]) -> list[str]:
         f"- Model artifact: `{summary['model_artifact_path']}`",
         f"- Model detector: `{model.get('detector_name')}`",
         f"- Feature count: {model.get('feature_count')}",
+        f"- Active threshold profile: `{summary['alert_profile']}`",
+        f"- Active RF threshold: {summary['threshold_profile']['threshold']:.3f}",
         f"- Validation strategy: `{validation.get('strategy')}`",
         f"- Validation folds: {validation.get('executed_folds')}",
         f"- Validation F1 mean: {float(metrics.get('mean_f1_score', 0.0)):.3f}",
@@ -502,6 +524,38 @@ def _model_report_lines(summary: dict[str, Any]) -> list[str]:
         "- Model scores are global-feature Random Forest probabilities; "
         "threshold profiles should be tuned on held-out grouped validation data.",
     ]
+
+
+def _threshold_profile_summary(
+    model_artifact: OpsModelArtifact | None,
+    profile: ThresholdProfileName,
+    thresholds: RuleThresholds,
+) -> dict[str, Any]:
+    if model_artifact is None:
+        return {
+            "profile": "conservative",
+            "threshold": thresholds.prediction_threshold,
+            "source": "rules_baseline",
+            "selection_method": "fixed_rule_threshold",
+        }
+    profiles = model_artifact.metadata.get("threshold_profiles") or {}
+    profile_metadata = profiles.get(profile) or {}
+    return {
+        "profile": profile,
+        "threshold": float(
+            profile_metadata.get(
+                "threshold",
+                model_artifact.model.config.prediction_threshold,
+            )
+        ),
+        "source": "model_artifact",
+        "selection_method": profile_metadata.get(
+            "selection_method",
+            "saved_model_default",
+        ),
+        "optimized_metric": profile_metadata.get("optimized_metric"),
+        "metrics": profile_metadata.get("metrics"),
+    }
 
 
 def _final_predicted_label(

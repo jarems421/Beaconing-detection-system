@@ -82,6 +82,18 @@ Score with that saved artifact:
 beacon-ops score --input path/to/normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --output-dir results/operational/run_002
 ```
 
+Threshold profiles:
+
+| Profile | Selection goal |
+| --- | --- |
+| `conservative` | Minimize false positives first, then prefer better precision/F1. |
+| `balanced` | Maximize grouped-validation F1. |
+| `sensitive` | Maximize recall first, then prefer better F1. |
+
+Profiles are selected from out-of-fold grouped validation scores during `train-model`, recorded in
+the artifact metadata, and applied at score time with `--profile`. The estimator is not retrained
+when switching profiles.
+
 ## Default Outputs
 
 Every score run writes:
@@ -102,11 +114,11 @@ The first operational slice is rules-first so ingestion, grouping, validation, a
 stable. The Random Forest path is artifact-based: `train-model` writes a reusable model directory
 with grouped validation metrics, and `score` loads that artifact instead of retraining.
 The model artifact directory includes `artifact_manifest.json`, feature names, label mapping,
-training-source references, validation metrics, dependency versions, and a pickle trust warning.
+training-source references, validation metrics, threshold profiles, dependency versions, and a pickle
+trust warning.
 
 Next implementation steps:
 
-1. Harden output/report wording and add training/scoring manifest polish.
-2. Add conservative, balanced, and sensitive threshold profiles.
-3. Add NetFlow/IPFIX CSV ingestion when interoperability becomes a priority.
-4. Keep LOF and statistical methods as diagnostics, not the main operational detector.
+1. Add optional probability calibration or cost-sensitive tuning if real validation data warrants it.
+2. Add NetFlow/IPFIX CSV ingestion when interoperability becomes a priority.
+3. Keep LOF and statistical methods as diagnostics, not the main operational detector.

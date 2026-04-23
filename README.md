@@ -229,6 +229,13 @@ Score with the saved model artifact loaded at runtime:
 beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --output-dir results/operational/run_002
 ```
 
+Saved RF artifacts include validation-backed threshold profiles: `conservative`, `balanced`, and
+`sensitive`. Select one at score time:
+
+```powershell
+beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --profile balanced --output-dir results/operational/run_003
+```
+
 Score a Zeek `conn.log`:
 
 ```powershell

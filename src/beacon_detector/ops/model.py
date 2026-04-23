@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from sklearn.model_selection import StratifiedGroupKFold
 
@@ -37,6 +37,7 @@ OPS_MODEL_TRAINING_SUMMARY_FILE = "training_summary.json"
 OPS_MODEL_TRAINING_REPORT_FILE = "training_report.md"
 DEFAULT_OPERATIONAL_RF_THRESHOLD = 0.65
 DEFAULT_GROUPED_VALIDATION_FOLDS = 5
+ThresholdProfileName = Literal["conservative", "balanced", "sensitive"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,12 +66,20 @@ class OpsGroupedValidationFold:
 
 
 @dataclass(frozen=True, slots=True)
+class OpsValidationPrediction:
+    fold: int
+    true_label: str
+    score: float
+
+
+@dataclass(frozen=True, slots=True)
 class OpsGroupedValidationResult:
     strategy: str
     requested_folds: int
     executed_folds: int
     skipped_reason: str | None
     folds: tuple[OpsGroupedValidationFold, ...]
+    predictions: tuple[OpsValidationPrediction, ...] = ()
 
 
 def train_random_forest_model(
@@ -209,6 +218,7 @@ def validate_grouped_random_forest(
             executed_folds=0,
             skipped_reason="requested_folds must be at least 2",
             folds=(),
+            predictions=(),
         )
 
     labels = [row.label for row in feature_rows]
@@ -232,6 +242,7 @@ def validate_grouped_random_forest(
                 "grouped validation."
             ),
             folds=(),
+            predictions=(),
         )
 
     splitter = StratifiedGroupKFold(
@@ -241,6 +252,7 @@ def validate_grouped_random_forest(
     )
     numeric_labels = [1 if label == "beacon" else 0 for label in labels]
     folds: list[OpsGroupedValidationFold] = []
+    validation_predictions: list[OpsValidationPrediction] = []
     for fold_number, (train_indices, validation_indices) in enumerate(
         splitter.split(
             X=list(range(len(feature_rows))),
@@ -257,6 +269,14 @@ def validate_grouped_random_forest(
             config=config,
         )
         predictions = detect_flow_feature_rows_supervised(validation_rows, model=model)
+        validation_predictions.extend(
+            OpsValidationPrediction(
+                fold=fold_number,
+                true_label=row.label,
+                score=prediction.score,
+            )
+            for row, prediction in zip(validation_rows, predictions, strict=True)
+        )
         metrics = calculate_classification_metrics(
             [row.label for row in validation_rows],
             [prediction.predicted_label for prediction in predictions],
@@ -279,6 +299,7 @@ def validate_grouped_random_forest(
         executed_folds=len(folds),
         skipped_reason=None,
         folds=tuple(folds),
+        predictions=tuple(validation_predictions),
     )
 
 
@@ -336,6 +357,7 @@ def _metadata(
         "feature_count": len(model.config.feature_names),
         "config": asdict(model.config),
         "validation": _validation_metadata(validation),
+        "threshold_profiles": threshold_profile_metadata(validation),
         "runtime_environment": runtime_environment(),
         "persistence": {
             "format": "pickle",
@@ -375,6 +397,15 @@ def _training_report(metadata: dict[str, Any]) -> str:
             f"- Validation F1 mean: {metadata['validation']['metrics']['mean_f1_score']:.3f}",
             "- Validation FPR mean: "
             f"{metadata['validation']['metrics']['mean_false_positive_rate']:.3f}",
+            "",
+            "## Threshold Profiles",
+            "",
+            "| Profile | Threshold | Optimized Metric | F1 | Recall | FPR |",
+            "| --- | ---: | --- | ---: | ---: | ---: |",
+            *[
+                _threshold_profile_report_row(name, profile)
+                for name, profile in metadata["threshold_profiles"].items()
+            ],
             "",
             "## Artifact Manifest",
             "",
@@ -424,7 +455,150 @@ def _validation_metadata(validation: OpsGroupedValidationResult) -> dict[str, An
             }
             for fold in validation.folds
         ],
+        "out_of_fold_prediction_count": len(validation.predictions),
     }
+
+
+def threshold_profile_metadata(
+    validation: OpsGroupedValidationResult,
+) -> dict[str, dict[str, Any]]:
+    if not validation.predictions:
+        fallback = _threshold_profile(
+            threshold=DEFAULT_OPERATIONAL_RF_THRESHOLD,
+            optimized_metric="fallback_default_no_grouped_validation_predictions",
+            metrics=calculate_classification_metrics([], []),
+        )
+        return {
+            "conservative": fallback,
+            "balanced": fallback,
+            "sensitive": fallback,
+        }
+
+    candidates = _candidate_thresholds([prediction.score for prediction in validation.predictions])
+    evaluations = [
+        _evaluate_threshold(validation.predictions, threshold)
+        for threshold in candidates
+    ]
+    return {
+        "conservative": _select_threshold_profile(
+            evaluations,
+            optimized_metric="min_false_positive_rate_then_precision",
+            key=lambda row: (
+                -row["metrics"]["false_positive_rate"],
+                row["metrics"]["precision"],
+                row["metrics"]["f1_score"],
+                row["metrics"]["recall"],
+                row["threshold"],
+            ),
+        ),
+        "balanced": _select_threshold_profile(
+            evaluations,
+            optimized_metric="max_f1",
+            key=lambda row: (
+                row["metrics"]["f1_score"],
+                row["metrics"]["recall"],
+                row["metrics"]["precision"],
+                -abs(row["metrics"]["false_positive_rate"] - 0.1),
+            ),
+        ),
+        "sensitive": _select_threshold_profile(
+            evaluations,
+            optimized_metric="max_recall_then_f1",
+            key=lambda row: (
+                row["metrics"]["recall"],
+                row["metrics"]["f1_score"],
+                row["metrics"]["precision"],
+                -row["metrics"]["false_positive_rate"],
+                -row["threshold"],
+            ),
+        ),
+    }
+
+
+def threshold_for_profile(
+    model_artifact: OpsModelArtifact,
+    profile: ThresholdProfileName,
+) -> float:
+    profiles = model_artifact.metadata.get("threshold_profiles") or {}
+    profile_metadata = profiles.get(profile)
+    if not profile_metadata:
+        return model_artifact.model.config.prediction_threshold
+    return float(profile_metadata["threshold"])
+
+
+def model_with_threshold_profile(
+    model_artifact: OpsModelArtifact,
+    profile: ThresholdProfileName,
+) -> SupervisedDetectorModel:
+    threshold = threshold_for_profile(model_artifact, profile)
+    return replace(
+        model_artifact.model,
+        config=replace(model_artifact.model.config, prediction_threshold=threshold),
+    )
+
+
+def _candidate_thresholds(scores: list[float]) -> list[float]:
+    clipped_scores = sorted({min(max(score, 0.0), 1.0) for score in scores})
+    candidates = {0.0, 1.0}
+    candidates.update(clipped_scores)
+    candidates.update(
+        (left + right) / 2.0
+        for left, right in zip(clipped_scores, clipped_scores[1:], strict=False)
+    )
+    return sorted(candidates)
+
+
+def _evaluate_threshold(
+    predictions: tuple[OpsValidationPrediction, ...],
+    threshold: float,
+) -> dict[str, Any]:
+    predicted_labels = [
+        "beacon" if prediction.score >= threshold else "benign"
+        for prediction in predictions
+    ]
+    true_labels = [prediction.true_label for prediction in predictions]
+    metrics = calculate_classification_metrics(true_labels, predicted_labels)
+    return _threshold_profile(
+        threshold=threshold,
+        optimized_metric="candidate",
+        metrics=metrics,
+    )
+
+
+def _select_threshold_profile(
+    evaluations: list[dict[str, Any]],
+    *,
+    optimized_metric: str,
+    key,
+) -> dict[str, Any]:
+    selected = max(evaluations, key=key)
+    return {
+        **selected,
+        "optimized_metric": optimized_metric,
+        "selection_method": "out_of_fold_grouped_validation",
+    }
+
+
+def _threshold_profile(
+    *,
+    threshold: float,
+    optimized_metric: str,
+    metrics: ClassificationMetrics,
+) -> dict[str, Any]:
+    return {
+        "threshold": float(threshold),
+        "optimized_metric": optimized_metric,
+        "metrics": asdict(metrics),
+    }
+
+
+def _threshold_profile_report_row(name: str, profile: dict[str, Any]) -> str:
+    metrics = profile["metrics"]
+    return (
+        f"| {name} | {profile['threshold']:.3f} | "
+        f"{profile['optimized_metric']} | {metrics['f1_score']:.3f} | "
+        f"{metrics['recall']:.3f} | {metrics['false_positive_rate']:.3f} |"
+    )
 
 
 def _artifact_manifest(metadata: dict[str, Any]) -> dict[str, Any]:
@@ -439,6 +613,7 @@ def _artifact_manifest(metadata: dict[str, Any]) -> dict[str, Any]:
         "label_mapping": metadata["label_mapping"],
         "training_data": metadata["training_data"],
         "validation": metadata["validation"],
+        "threshold_profiles": metadata["threshold_profiles"],
         "runtime_environment": metadata["runtime_environment"],
         "persistence": metadata["persistence"],
     }

@@ -94,6 +94,12 @@ def main() -> None:
         default=None,
         help="Optional operational RF model artifact directory or model.pkl file.",
     )
+    score_parser.add_argument(
+        "--profile",
+        default="conservative",
+        choices=("conservative", "balanced", "sensitive"),
+        help="Threshold profile for saved-model scoring.",
+    )
 
     args = parser.parse_args()
     if args.command == "validate":
@@ -159,6 +165,7 @@ def main() -> None:
         input_format=args.input_format,
         output_dir=args.output_dir,
         model_artifact_path=args.model_artifact,
+        threshold_profile=args.profile,
     )
     print("Operational scoring complete")
     print(f"alerts_csv: {outputs.alerts_csv}")

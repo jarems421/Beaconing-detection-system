@@ -182,21 +182,33 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(metadata["validation"]["executed_folds"], 2)
         self.assertEqual(len(metadata["validation"]["folds"]), 2)
         self.assertIn("mean_f1_score", metadata["validation"]["metrics"])
+        self.assertEqual(
+            set(metadata["threshold_profiles"]),
+            {"conservative", "balanced", "sensitive"},
+        )
+        self.assertEqual(
+            metadata["threshold_profiles"]["balanced"]["selection_method"],
+            "out_of_fold_grouped_validation",
+        )
         manifest = json.loads(
             training_outputs.artifact_manifest_json.read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["artifact_type"], "operational_random_forest_model")
         self.assertEqual(manifest["label_mapping"]["unknown"], "skipped")
+        self.assertIn("threshold_profiles", manifest)
 
         outputs = run_batch_score(
             input_path=score_path,
             input_format="normalized-csv",
             output_dir=output_dir / "out",
             model_artifact_path=training_outputs.model_dir,
+            threshold_profile="balanced",
         )
 
         summary = json.loads(outputs.run_summary_json.read_text(encoding="utf-8"))
         self.assertEqual(summary["mode"], "rules_random_forest_hybrid")
+        self.assertEqual(summary["alert_profile"], "balanced")
+        self.assertEqual(summary["threshold_profile"]["source"], "model_artifact")
         self.assertEqual(summary["model_detector_name"], "random_forest_v1")
         self.assertIn("model_metadata", summary)
         self.assertEqual(summary["model_metadata"]["label_mapping"]["beacon"], 1)
