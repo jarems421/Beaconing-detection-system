@@ -1,63 +1,60 @@
 # Beaconing Detection System
 
-Flow-level behavioural detection of command-and-control beaconing under timing jitter, size variation,
-burst traffic, hard benign profiles, and CTU-13 public-data domain shift.
+Operational and research system for flow-level command-and-control beaconing detection across
+normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV inputs.
 
-**Headline result:** strong controlled synthetic performance does not automatically transfer to
-public flow data. Minimum evidence requirements and CTU-13 schema/domain shift are the key limits.
+Hybrid rules + Random Forest scoring, validation-backed threshold profiles, ingestion diagnostics,
+and conservative score-reporting safeguards sit alongside the full synthetic and CTU-13 evaluation
+pipeline.
+
+**Headline result:** strong synthetic performance does not automatically transfer to public flow
+data. Minimum evidence requirements and schema/domain shift remain the core limits.
+
+## Why This Repo
+
+- Real operational ingestion path: normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV.
+- Hybrid scoring path: interpretable rules plus saved-model Random Forest scoring without retraining.
+- Validation discipline: grouped validation, threshold profiles selected from out-of-fold scores, and explicit calibration diagnostics.
+- Operational outputs: ranked alerts, full scored flows, machine-readable run summary, and readable report.
+- Public-data honesty: CTU-13 results are separated from synthetic benchmark claims instead of folded into a cleaner story than the data supports.
 
 ## At A Glance
 
 | Question | Short answer |
 | --- | --- |
-| Task | Detect C2 beaconing from flow-level behaviour, not payload signatures. |
-| Approach | Compare interpretable rules, statistical scoring, anomaly detection, and supervised ML on synthetic and CTU-13 traffic. |
-| Best synthetic model | Random Forest is strongest on the controlled synthetic benchmark. |
-| Core finding | Minimum evidence matters: evasive low-event, high-jitter, size-overlapping flows need substantially more history. |
-| CTU takeaway | Public CTU-13 validation exposes schema/domain shift that synthetic results alone would hide. |
-| Final claim | This is a comparative flow-level detection study, not a production SOC detector. |
+| Detection task | Command-and-control beaconing from flow behaviour, not payload signatures. |
+| Operational path | Normalize logs, group flows, extract behavioural features, score, and write analyst-readable outputs. |
+| Research path | Compare rules, statistical scoring, anomaly baselines, and supervised ML under synthetic stress and CTU-13 transfer. |
+| Strongest synthetic model | Random Forest on the controlled synthetic benchmark. |
+| Strongest finding | Minimum evidence matters: evasive low-event, high-jitter, size-overlapping flows need substantially more history. |
+| Public-data takeaway | CTU-13 exposes schema/domain shift that synthetic results alone would hide. |
+| Final claim | Serious flow-level detection system and comparative research repo, not a production SOC platform. |
 
-## Motivation
-
-Beaconing can look periodic, but real benign traffic and evasive attacker behaviour make simple
-periodicity checks unreliable. Attackers can add timing jitter, vary payload sizes, communicate in
-bursts, or keep flows short enough that there is not much evidence to learn from. This project studies
-where flow-level behavioural detection works, where it breaks, and how results change when the same
-ideas are tested against CTU-13 public flow data.
-
-## Key Findings
-
-- Flow-level behavioural features can detect fixed, jittered, and bursty synthetic beaconing well.
-- Hard benign repeated traffic and shortcut/overlap stress expose false positives and brittle assumptions.
-- The strongest research result is a minimum-evidence finding: evasive beaconing needs enough flow
-  history before aggregate features become reliable.
-
-## Research Question
-
-How effectively can flow-level statistical and machine learning methods detect beaconing traffic when
-attackers introduce timing jitter, size variation, and burst-based communication patterns?
-
-## Architecture
+## Operational Architecture
 
 ```mermaid
 flowchart LR
-    A[Synthetic generator / CTU-13 public data] --> B[Flow construction]
-    B --> C[Behavioural feature extraction]
-    C --> D[Detector families]
-    D --> E[Evaluation tracks]
-    E --> F[Report-ready tables and figures]
-
-    D --> D1[Rules]
-    D --> D2[Statistical scoring]
-    D --> D3[Anomaly detection]
-    D --> D4[Supervised ML]
-
-    E --> E1[Synthetic hardened grid]
-    E --> E2[Stress and minimum-evidence studies]
-    E --> E3[CTU-13 validation]
+    A[Normalized CSV / Zeek conn.log / NetFlow-IPFIX CSV] --> B[Input validation and alias mapping]
+    B --> C[Flow grouping<br/>src_ip + dst_ip + dst_port + protocol + direction]
+    C --> D[Behavioural feature extraction]
+    D --> E1[Rules baseline]
+    D --> E2[Saved Random Forest artifact]
+    E1 --> F[Hybrid decision policy]
+    E2 --> F
+    F --> G[alerts.csv]
+    F --> H[scored_flows.csv]
+    F --> I[run_summary.json]
+    F --> J[report.md]
 ```
 
-## Key Results
+## Core Result
+
+Controlled synthetic benchmarks are strong, especially for Random Forest, but the decisive result is
+not raw benchmark performance. The decisive result is that evidence limits and public-data shift
+change the story materially: harder low-evidence beaconing requires more history, and CTU-13 shows
+that synthetic wins do not automatically survive contact with a different schema.
+
+## Results
 
 The strongest project finding is the minimum-evidence result: easy beaconing regimes can be detected
 with little flow history, while evasive time-and-size jittered traffic requires more evidence before
@@ -75,6 +72,14 @@ synthetic-transfer RF can detect many botnet-labelled flows but false-positives 
 CTU-native approaches are better aligned with the public data schema but still limited.
 
 ![CTU three-stage comparison](results/figures/final_story/03_ctu_three_stage_comparison.png)
+
+## Results and Limits
+
+- Flow-level behavioural features can detect fixed, jittered, and bursty synthetic beaconing well.
+- Hard benign repeated traffic and shortcut/overlap stress expose false positives and brittle assumptions.
+- Minimum evidence is a first-order constraint: low-event evasive flows remain difficult until enough history accumulates.
+- CTU-13 results are materially weaker than synthetic results and are reported separately on purpose.
+- RF operational scores remain uncalibrated ranking scores unless a later calibrated artifact path is added.
 
 ## Detector Tradeoffs
 
