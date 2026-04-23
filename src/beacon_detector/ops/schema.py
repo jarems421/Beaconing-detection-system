@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 ProtocolName = Literal["tcp", "udp"]
+OperationalLabel = Literal["benign", "beacon", "unknown"]
 
 NORMALIZED_REQUIRED_COLUMNS = (
     "timestamp",
@@ -21,8 +22,10 @@ NORMALIZED_OPTIONAL_COLUMNS = (
     "src_port",
     "duration_seconds",
     "total_packets",
+    "label",
 )
 SUPPORTED_PROTOCOLS = {"tcp", "udp"}
+SUPPORTED_LABELS = {"benign", "beacon", "unknown"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +46,7 @@ class OperationalEvent:
     src_port: str | None = None
     duration_seconds: float | None = None
     total_packets: int | None = None
+    label: OperationalLabel | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +68,12 @@ class ValidationResult:
         return not self.issues
 
 
-def validate_normalized_csv(path: str | Path) -> ValidationResult:
+def validate_normalized_csv(
+    path: str | Path,
+    *,
+    require_label: bool = False,
+    label_column: str = "label",
+) -> ValidationResult:
     input_path = Path(path)
     issues: list[ValidationIssue] = []
     row_count = 0
@@ -84,13 +93,27 @@ def validate_normalized_csv(path: str | Path) -> ValidationResult:
                     message=f"Missing required column: {column}",
                 )
             )
+        if require_label and label_column not in fieldnames:
+            issues.append(
+                ValidationIssue(
+                    row_number=None,
+                    column=label_column,
+                    message=f"Missing required label column: {label_column}",
+                )
+            )
         if missing_columns:
+            return ValidationResult(input_path, row_count, valid_row_count, tuple(issues))
+        if require_label and label_column not in fieldnames:
             return ValidationResult(input_path, row_count, valid_row_count, tuple(issues))
 
         for row_number, row in enumerate(reader, start=2):
             row_count += 1
             try:
-                event_from_normalized_row(row)
+                event_from_normalized_row(
+                    row,
+                    require_label=require_label,
+                    label_column=label_column,
+                )
             except ValueError as exc:
                 issues.append(
                     ValidationIssue(
@@ -120,7 +143,44 @@ def load_normalized_csv(path: str | Path) -> list[OperationalEvent]:
         return [event_from_normalized_row(row) for row in csv.DictReader(input_file)]
 
 
-def event_from_normalized_row(row: dict[str, str]) -> OperationalEvent:
+def load_labelled_normalized_csv(
+    path: str | Path,
+    *,
+    label_column: str = "label",
+) -> list[OperationalEvent]:
+    validation = validate_normalized_csv(
+        path,
+        require_label=True,
+        label_column=label_column,
+    )
+    if not validation.is_valid:
+        first_issue = validation.issues[0]
+        location = (
+            f"row {first_issue.row_number}"
+            if first_issue.row_number is not None
+            else "header"
+        )
+        raise ValueError(
+            f"Invalid labelled normalized CSV at {location}: {first_issue.message}"
+        )
+
+    with Path(path).open("r", encoding="utf-8", newline="") as input_file:
+        return [
+            event_from_normalized_row(
+                row,
+                require_label=True,
+                label_column=label_column,
+            )
+            for row in csv.DictReader(input_file)
+        ]
+
+
+def event_from_normalized_row(
+    row: dict[str, str],
+    *,
+    require_label: bool = False,
+    label_column: str = "label",
+) -> OperationalEvent:
     timestamp = _parse_timestamp(_required(row, "timestamp"))
     src_ip = _required(row, "src_ip")
     direction = _required(row, "direction")
@@ -142,6 +202,10 @@ def event_from_normalized_row(row: dict[str, str]) -> OperationalEvent:
     if duration_seconds is not None and duration_seconds < 0:
         raise ValueError("duration_seconds must be non-negative.")
 
+    label = _parse_optional_label(row.get(label_column), label_column)
+    if require_label and label is None:
+        raise ValueError(f"{label_column} is required.")
+
     return OperationalEvent(
         timestamp=timestamp,
         src_ip=src_ip,
@@ -153,6 +217,7 @@ def event_from_normalized_row(row: dict[str, str]) -> OperationalEvent:
         total_bytes=total_bytes,
         duration_seconds=duration_seconds,
         total_packets=total_packets,
+        label=label,
     )
 
 
@@ -186,6 +251,16 @@ def _parse_protocol(value: str) -> ProtocolName:
     normalized = value.lower()
     if normalized not in SUPPORTED_PROTOCOLS:
         raise ValueError(f"Unsupported protocol: {value}")
+    return normalized  # type: ignore[return-value]
+
+
+def _parse_optional_label(value: str | None, column: str) -> OperationalLabel | None:
+    value = _optional_text(value)
+    if value is None:
+        return None
+    normalized = value.lower()
+    if normalized not in SUPPORTED_LABELS:
+        raise ValueError(f"Unsupported {column}: {value}")
     return normalized  # type: ignore[return-value]
 
 

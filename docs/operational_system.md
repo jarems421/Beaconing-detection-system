@@ -27,6 +27,7 @@ Optional columns:
 | `src_port` | Captured for analyst context, not used in the default grouping key. |
 | `duration_seconds` | Event or connection duration. |
 | `total_packets` | Total packets for the event. |
+| `label` | Training label: `benign`, `beacon`, or `unknown`. Required only for `train-model`. |
 
 Default grouping key:
 
@@ -54,6 +55,18 @@ Score Zeek `conn.log`:
 beacon-ops score --input path/to/conn.log --input-format zeek-conn --output-dir results/operational/zeek_run_001
 ```
 
+Train a Random Forest model:
+
+```powershell
+beacon-ops train-model --train path/to/labelled_train.csv --output-dir models/operational/rf_v1
+```
+
+Score with that saved artifact:
+
+```powershell
+beacon-ops score --input path/to/normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --output-dir results/operational/run_002
+```
+
 ## Default Outputs
 
 Every score run writes:
@@ -67,13 +80,14 @@ Every score run writes:
 
 ## Detector Roadmap
 
-The first operational slice is rules-only so ingestion, grouping, validation, and outputs are stable
-before model handling is introduced.
+The first operational slice is rules-first so ingestion, grouping, validation, and outputs stay
+stable. The Random Forest path is artifact-based: `train-model` writes a reusable model directory,
+and `score` loads that artifact instead of retraining.
 
 Next implementation steps:
 
-1. Add `train-model` for Random Forest model artifacts.
-2. Make `score` load a saved model artifact.
-3. Combine conservative rules with Random Forest scores in a hybrid alert ranker.
-4. Add NetFlow/IPFIX CSV ingestion.
+1. Add grouped validation metrics with non-overlapping groups.
+2. Add a synthetic-to-normalized export helper for demo/bootstrap models.
+3. Add NetFlow/IPFIX CSV ingestion.
+4. Add balanced and sensitive alert profiles.
 5. Keep LOF and statistical methods as diagnostics, not the main operational detector.

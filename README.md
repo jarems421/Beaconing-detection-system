@@ -188,6 +188,7 @@ Canonical normalized CSV columns:
 | `src_port` | No | Captured for context, not used in default grouping. |
 | `duration_seconds` | No | Non-negative numeric value. |
 | `total_packets` | No | Non-negative integer. |
+| `label` | Training only | `benign`, `beacon`, or `unknown`; unknown rows are skipped by training. |
 
 Validate a normalized CSV:
 
@@ -201,15 +202,26 @@ Score a normalized CSV:
 beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --output-dir results/operational/run_001
 ```
 
+Train a Random Forest model from labelled normalized CSV rows:
+
+```powershell
+beacon-ops train-model --train data/operational/labelled_train.csv --output-dir models/operational/rf_v1
+```
+
+Score with the saved model artifact loaded at runtime:
+
+```powershell
+beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --model-artifact models/operational/rf_v1 --output-dir results/operational/run_002
+```
+
 Score a Zeek `conn.log`:
 
 ```powershell
 beacon-ops score --input data/zeek/conn.log --input-format zeek-conn --output-dir results/operational/zeek_run_001
 ```
 
-The current operational detector is the conservative rules path. The Random Forest hybrid layer is
-the next planned upgrade and will use separate `train-model` and `score` commands with a saved model
-artifact.
+Without `--model-artifact`, scoring uses the conservative rules path. With `--model-artifact`,
+scoring loads the saved Random Forest artifact and writes hybrid rules + RF scores without retraining.
 
 ## Reproduce Key Artifacts
 

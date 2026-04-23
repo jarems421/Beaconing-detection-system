@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from beacon_detector.data.types import TrafficEvent
 from beacon_detector.detection.rules import (
     FROZEN_RULE_BASELINE_NAME,
     HIGH_PRECISION_RULE_BASELINE_THRESHOLDS,
@@ -15,18 +14,28 @@ from beacon_detector.detection.rules import (
     RuleThresholds,
     detect_flow_feature_rows,
 )
+from beacon_detector.detection.supervised import (
+    SupervisedDetectionResult,
+    detect_flow_feature_rows_supervised,
+)
 from beacon_detector.features import FlowFeatures, extract_features_from_flows
-from beacon_detector.flows import Flow, FlowKey, build_flows
+from beacon_detector.flows import Flow, FlowKey
 
+from .grouping import OpsFlowContext, build_operational_flows
 from .ingest import OperationalInputFormat, load_operational_events
-from .schema import OperationalEvent
+from .model import OpsModelArtifact, load_ops_model_artifact
 
 ALERT_COLUMNS = [
     "rank",
     "severity",
     "confidence",
+    "detector_mode",
     "score",
     "threshold",
+    "hybrid_score",
+    "rule_score",
+    "rf_score",
+    "rf_threshold",
     "src_ip",
     "direction",
     "dst_ip",
@@ -38,11 +47,20 @@ ALERT_COLUMNS = [
     "total_bytes",
     "src_ports_seen",
     "top_reasons",
+    "top_model_features",
 ]
 SCORED_COLUMNS = [
     "predicted_label",
+    "detector_mode",
     "score",
     "threshold",
+    "hybrid_score",
+    "rule_predicted_label",
+    "rule_score",
+    "rule_threshold",
+    "rf_predicted_label",
+    "rf_score",
+    "rf_threshold",
     "src_ip",
     "direction",
     "dst_ip",
@@ -58,6 +76,7 @@ SCORED_COLUMNS = [
     "size_cv",
     "src_ports_seen",
     "triggered_rules",
+    "top_model_features",
 ]
 
 
@@ -69,17 +88,28 @@ class OpsScoreOutputs:
     report_md: Path
 
 
-@dataclass(frozen=True, slots=True)
-class OpsFlowContext:
-    source_ports_by_key: dict[FlowKey, tuple[str, ...]]
-
-
 def run_rules_only_score(
     *,
     input_path: str | Path,
     input_format: OperationalInputFormat,
     output_dir: str | Path,
     thresholds: RuleThresholds | None = None,
+) -> OpsScoreOutputs:
+    return run_batch_score(
+        input_path=input_path,
+        input_format=input_format,
+        output_dir=output_dir,
+        thresholds=thresholds,
+    )
+
+
+def run_batch_score(
+    *,
+    input_path: str | Path,
+    input_format: OperationalInputFormat,
+    output_dir: str | Path,
+    thresholds: RuleThresholds | None = None,
+    model_artifact_path: str | Path | None = None,
 ) -> OpsScoreOutputs:
     thresholds = thresholds or HIGH_PRECISION_RULE_BASELINE_THRESHOLDS
     output_path = Path(output_dir)
@@ -88,21 +118,34 @@ def run_rules_only_score(
     events = load_operational_events(input_path, input_format=input_format)
     flows, context = build_operational_flows(events)
     feature_rows = extract_features_from_flows(flows)
-    results = detect_flow_feature_rows(feature_rows, thresholds=thresholds)
+    rule_results = detect_flow_feature_rows(feature_rows, thresholds=thresholds)
+    model_artifact = (
+        load_ops_model_artifact(model_artifact_path)
+        if model_artifact_path is not None
+        else None
+    )
+    supervised_results = (
+        detect_flow_feature_rows_supervised(feature_rows, model=model_artifact.model)
+        if model_artifact is not None
+        else []
+    )
+    supervised_by_key = {result.flow_key: result for result in supervised_results}
 
     feature_by_key = {row.flow_key: row for row in feature_rows}
     flow_by_key = {flow.flow_key: flow for flow in flows}
     scored_rows = [
         _scored_row(
-            result,
-            features=feature_by_key[result.flow_key],
-            flow=flow_by_key[result.flow_key],
+            rule_result,
+            supervised_result=supervised_by_key.get(rule_result.flow_key),
+            features=feature_by_key[rule_result.flow_key],
+            flow=flow_by_key[rule_result.flow_key],
             context=context,
         )
-        for result in results
+        for rule_result in rule_results
     ]
     alert_rows = _alert_rows(
-        results,
+        rule_results,
+        supervised_by_key=supervised_by_key,
         feature_by_key=feature_by_key,
         flow_by_key=flow_by_key,
         context=context,
@@ -119,6 +162,8 @@ def run_rules_only_score(
         input_path=Path(input_path),
         input_format=input_format,
         thresholds=thresholds,
+        model_artifact=model_artifact,
+        model_artifact_path=Path(model_artifact_path) if model_artifact_path else None,
         event_count=len(events),
         flow_count=len(flows),
         alert_count=len(alert_rows),
@@ -137,70 +182,50 @@ def run_rules_only_score(
     )
 
 
-def build_operational_flows(
-    events: list[OperationalEvent],
-) -> tuple[list[Flow], OpsFlowContext]:
-    source_ports_by_key: dict[FlowKey, set[str]] = {}
-    traffic_events: list[TrafficEvent] = []
-    for event in events:
-        key = FlowKey(
-            src_ip=event.src_ip,
-            dst_ip=event.dst_ip,
-            dst_port=event.dst_port,
-            protocol=event.protocol,
-            direction=event.direction,
-            src_port=None,
-        )
-        if event.src_port:
-            source_ports_by_key.setdefault(key, set()).add(event.src_port)
-        traffic_events.append(
-            TrafficEvent(
-                timestamp=event.timestamp,
-                src_ip=event.src_ip,
-                dst_ip=event.dst_ip,
-                dst_port=event.dst_port,
-                protocol=event.protocol,
-                size_bytes=event.total_bytes,
-                label="benign",
-                scenario_name="operational",
-                src_port=None,
-                direction=event.direction,
-            )
-        )
-
-    context = OpsFlowContext(
-        source_ports_by_key={
-            key: tuple(sorted(source_ports))
-            for key, source_ports in source_ports_by_key.items()
-        }
-    )
-    return build_flows(traffic_events), context
-
-
 def _alert_rows(
     results: list[RuleDetectionResult],
     *,
+    supervised_by_key: dict[FlowKey, SupervisedDetectionResult],
     feature_by_key: dict[FlowKey, FlowFeatures],
     flow_by_key: dict[FlowKey, Flow],
     context: OpsFlowContext,
 ) -> list[dict[str, Any]]:
     alert_results = sorted(
-        [result for result in results if result.predicted_label == "beacon"],
-        key=lambda result: result.score,
+        [
+            result
+            for result in results
+            if _final_predicted_label(result, supervised_by_key.get(result.flow_key))
+            == "beacon"
+        ],
+        key=lambda result: _final_score(result, supervised_by_key.get(result.flow_key)),
         reverse=True,
     )
     return [
         {
             "rank": rank,
-            "severity": _severity(result),
-            "confidence": _confidence(result),
+            "severity": _severity(
+                _final_score(result, supervised_by_key.get(result.flow_key)),
+                _final_threshold(result, supervised_by_key.get(result.flow_key)),
+            ),
+            "confidence": _confidence(
+                _final_score(result, supervised_by_key.get(result.flow_key)),
+                _final_threshold(result, supervised_by_key.get(result.flow_key)),
+            ),
+            "detector_mode": _detector_mode(supervised_by_key.get(result.flow_key)),
             **_flow_identity_row(
                 result,
+                supervised_result=supervised_by_key.get(result.flow_key),
                 features=feature_by_key[result.flow_key],
                 flow=flow_by_key[result.flow_key],
                 context=context,
             ),
-            "top_reasons": " | ".join(result.triggered_reasons),
+            "top_reasons": _alert_reasons(
+                result,
+                supervised_by_key.get(result.flow_key),
+            ),
+            "top_model_features": _top_model_features(
+                supervised_by_key.get(result.flow_key)
+            ),
         }
         for rank, result in enumerate(alert_results, start=1)
     ]
@@ -209,13 +234,31 @@ def _alert_rows(
 def _scored_row(
     result: RuleDetectionResult,
     *,
+    supervised_result: SupervisedDetectionResult | None,
     features: FlowFeatures,
     flow: Flow,
     context: OpsFlowContext,
 ) -> dict[str, Any]:
     return {
-        "predicted_label": result.predicted_label,
-        **_flow_identity_row(result, features=features, flow=flow, context=context),
+        "predicted_label": _final_predicted_label(result, supervised_result),
+        "detector_mode": _detector_mode(supervised_result),
+        **_flow_identity_row(
+            result,
+            supervised_result=supervised_result,
+            features=features,
+            flow=flow,
+            context=context,
+        ),
+        "rule_predicted_label": result.predicted_label,
+        "rule_score": result.score,
+        "rule_threshold": result.threshold,
+        "rf_predicted_label": (
+            supervised_result.predicted_label if supervised_result is not None else ""
+        ),
+        "rf_score": supervised_result.score if supervised_result is not None else "",
+        "rf_threshold": (
+            supervised_result.threshold if supervised_result is not None else ""
+        ),
         "mean_interarrival_seconds": features.mean_interarrival_seconds,
         "inter_arrival_cv": features.inter_arrival_cv,
         "periodicity_score": features.periodicity_score,
@@ -225,20 +268,26 @@ def _scored_row(
             for contribution in result.contributions
             if contribution.fired and contribution.score > 0
         ),
+        "top_model_features": _top_model_features(supervised_result),
     }
 
 
 def _flow_identity_row(
     result: RuleDetectionResult,
     *,
+    supervised_result: SupervisedDetectionResult | None,
     features: FlowFeatures,
     flow: Flow,
     context: OpsFlowContext,
 ) -> dict[str, Any]:
     key = result.flow_key
     return {
-        "score": result.score,
-        "threshold": result.threshold,
+        "score": _final_score(result, supervised_result),
+        "threshold": _final_threshold(result, supervised_result),
+        "hybrid_score": _hybrid_score(result, supervised_result),
+        "rule_score": result.score,
+        "rf_score": supervised_result.score if supervised_result is not None else "",
+        "rf_threshold": supervised_result.threshold if supervised_result is not None else "",
         "src_ip": key.src_ip,
         "direction": key.direction or "",
         "dst_ip": key.dst_ip,
@@ -257,16 +306,30 @@ def _run_summary(
     input_path: Path,
     input_format: str,
     thresholds: RuleThresholds,
+    model_artifact: OpsModelArtifact | None,
+    model_artifact_path: Path | None,
     event_count: int,
     flow_count: int,
     alert_count: int,
 ) -> dict[str, Any]:
+    detector_mode = (
+        "rules_random_forest_hybrid" if model_artifact is not None else "rules_only"
+    )
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "input_path": str(input_path),
         "input_format": input_format,
-        "mode": "rules_only",
+        "mode": detector_mode,
         "detector_name": FROZEN_RULE_BASELINE_NAME,
+        "model_artifact_path": str(model_artifact_path) if model_artifact_path else None,
+        "model_detector_name": (
+            model_artifact.model.detector_name if model_artifact is not None else None
+        ),
+        "model_schema_version": (
+            model_artifact.metadata.get("schema_version")
+            if model_artifact is not None
+            else None
+        ),
         "alert_profile": "conservative",
         "prediction_threshold": thresholds.prediction_threshold,
         "flow_grouping_key": [
@@ -301,6 +364,7 @@ def _report_markdown(
         f"- Input: `{summary['input_path']}`",
         f"- Input format: `{summary['input_format']}`",
         f"- Detector: `{summary['detector_name']}`",
+        f"- Mode: `{summary['mode']}`",
         f"- Alert profile: `{summary['alert_profile']}`",
         f"- Input events: {summary['input_event_count']}",
         f"- Scored flows: {summary['scored_flow_count']}",
@@ -338,8 +402,73 @@ def _report_markdown(
     return "\n".join(lines)
 
 
-def _severity(result: RuleDetectionResult) -> str:
-    margin = result.score - result.threshold
+def _final_predicted_label(
+    result: RuleDetectionResult,
+    supervised_result: SupervisedDetectionResult | None,
+) -> str:
+    if supervised_result is not None and supervised_result.predicted_label == "beacon":
+        return "beacon"
+    return result.predicted_label
+
+
+def _final_score(
+    result: RuleDetectionResult,
+    supervised_result: SupervisedDetectionResult | None,
+) -> float:
+    if supervised_result is None:
+        return result.score
+    return _hybrid_score(result, supervised_result)
+
+
+def _final_threshold(
+    result: RuleDetectionResult,
+    supervised_result: SupervisedDetectionResult | None,
+) -> float:
+    return 1.0 if supervised_result is not None else result.threshold
+
+
+def _hybrid_score(
+    result: RuleDetectionResult,
+    supervised_result: SupervisedDetectionResult | None,
+) -> float:
+    if supervised_result is None:
+        return result.score
+    rule_ratio = result.score / result.threshold if result.threshold > 0 else 0.0
+    rf_ratio = (
+        supervised_result.score / supervised_result.threshold
+        if supervised_result.threshold > 0
+        else 0.0
+    )
+    return max(rule_ratio, rf_ratio)
+
+
+def _detector_mode(supervised_result: SupervisedDetectionResult | None) -> str:
+    return "rules_random_forest_hybrid" if supervised_result is not None else "rules_only"
+
+
+def _top_model_features(
+    supervised_result: SupervisedDetectionResult | None,
+) -> str:
+    if supervised_result is None:
+        return ""
+    return " | ".join(supervised_result.top_model_features)
+
+
+def _alert_reasons(
+    result: RuleDetectionResult,
+    supervised_result: SupervisedDetectionResult | None,
+) -> str:
+    reasons = list(result.triggered_reasons)
+    if supervised_result is not None and supervised_result.predicted_label == "beacon":
+        reasons.append(
+            "random forest probability "
+            f"{supervised_result.score:.3f} >= {supervised_result.threshold:.3f}"
+        )
+    return " | ".join(reasons)
+
+
+def _severity(score: float, threshold: float) -> str:
+    margin = score - threshold
     if margin >= 2.0:
         return "critical"
     if margin >= 1.0:
@@ -347,10 +476,10 @@ def _severity(result: RuleDetectionResult) -> str:
     return "medium"
 
 
-def _confidence(result: RuleDetectionResult) -> float:
-    if result.threshold <= 0:
+def _confidence(score: float, threshold: float) -> float:
+    if threshold <= 0:
         return 1.0
-    return min(result.score / result.threshold, 1.0)
+    return min(score / threshold, 1.0)
 
 
 def _write_csv(
