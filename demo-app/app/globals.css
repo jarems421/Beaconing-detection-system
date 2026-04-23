@@ -67,6 +67,7 @@ p {
 .top-nav-links,
 .hero,
 .overview-hero,
+.workspace-control-grid,
 .workflow-strip,
 .metric-strip,
 .overview-grid,
@@ -405,6 +406,10 @@ h2 {
   margin-bottom: 16px;
 }
 
+.workspace-control-grid {
+  grid-template-columns: 1fr;
+}
+
 .workspace-grid {
   grid-template-columns: 320px 1fr;
   margin-bottom: 16px;
@@ -446,7 +451,9 @@ h2 {
 .diagnostic-pill,
 .key-value-row,
 .note-row,
-.diag-card {
+.diag-card,
+.status-banner,
+.empty-state {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel-2);
@@ -454,7 +461,9 @@ h2 {
 
 .score-tile,
 .diagnostic-pill,
-.diag-card {
+.diag-card,
+.status-banner,
+.empty-state {
   padding: 14px;
 }
 
@@ -526,6 +535,70 @@ h2 {
   background: var(--panel-3);
   color: var(--text);
   padding: 11px 12px;
+}
+
+.file-input {
+  width: 100%;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-3);
+  color: var(--muted);
+  padding: 11px 12px;
+}
+
+.control-label {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control-help {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.control-submit {
+  width: 100%;
+  cursor: pointer;
+}
+
+.control-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.workspace-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.status-banner {
+  margin-top: 14px;
+  color: var(--text);
+}
+
+.empty-state {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.backend-ready {
+  border-color: rgba(42, 185, 168, 0.45);
+  color: #9be4d8;
+}
+
+.backend-checking {
+  border-color: rgba(116, 195, 255, 0.45);
+  color: #9dd4ff;
+}
+
+.backend-unavailable {
+  border-color: rgba(242, 196, 109, 0.45);
+  color: #f7d492;
 }
 
 .search-input::placeholder {

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { normalizeWorkspacePayload } from "../lib/demo-data-model";
 
 const previewOrder = [
   ["report_md", "report.md"],
@@ -11,18 +13,60 @@ const previewOrder = [
   ["training_report_md", "training_report.md"],
 ];
 
-export default function DemoWorkspace({ data }) {
+export default function DemoWorkspace({ initialData, manifest }) {
+  const [data, setData] = useState(() => normalizeWorkspacePayload(initialData));
+  const [selectedScenarioId, setSelectedScenarioId] = useState(initialData.scenario.id);
   const [query, setQuery] = useState("");
-  const [selectedAlertId, setSelectedAlertId] = useState(data.selected_alert_id);
+  const [selectedAlertId, setSelectedAlertId] = useState(initialData.selected_alert_id);
   const [selectedPreview, setSelectedPreview] = useState("report_md");
+  const [selectedProfile, setSelectedProfile] = useState(initialData.scenario.profile);
+  const [selectedInputFormat, setSelectedInputFormat] = useState(initialData.scenario.input_format);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [backendState, setBackendState] = useState(
+    process.env.NEXT_PUBLIC_DEMO_API_BASE_URL
+      ? { status: "checking", message: "Checking live scoring service..." }
+      : { status: "unavailable", message: "Live scoring is not configured for this deployment." }
+  );
 
-  const summary = useMemo(() => {
-    try {
-      return JSON.parse(data.previews.run_summary_json);
-    } catch {
-      return null;
+  const apiBaseUrl = process.env.NEXT_PUBLIC_DEMO_API_BASE_URL || "";
+
+  useEffect(() => {
+    let active = true;
+    if (!apiBaseUrl) {
+      return undefined;
     }
-  }, [data.previews.run_summary_json]);
+    fetch(`${apiBaseUrl}/health`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Live scoring service is not ready.");
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!active) {
+          return;
+        }
+        setBackendState({
+          status: "ready",
+          message: `Live scoring ready (${payload.available_input_formats.join(", ")})`,
+        });
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        setBackendState({
+          status: "unavailable",
+          message: "Live scoring is unavailable right now. Sample scenarios still work.",
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [apiBaseUrl]);
 
   const filteredAlerts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -30,14 +74,7 @@ export default function DemoWorkspace({ data }) {
       return data.alerts;
     }
     return data.alerts.filter((alert) =>
-      [
-        alert.id,
-        alert.src,
-        alert.dst,
-        alert.proto,
-        String(alert.port),
-        ...alert.reasons,
-      ]
+      [alert.id, alert.src, alert.dst, alert.proto, String(alert.port), ...alert.reasons]
         .join(" ")
         .toLowerCase()
         .includes(normalizedQuery)
@@ -60,12 +97,75 @@ export default function DemoWorkspace({ data }) {
     );
   }, [data.scored_flows, selectedAlert]);
 
-  const profile = summary?.profile || "balanced";
-  const metrics = Object.fromEntries(data.metrics.map((item) => [item.label, item.value]));
-  const trainCommand =
-    data.commands.find((command) => command.includes("beacon-ops train-model")) || "";
-  const scoreCommand =
-    data.commands.find((command) => command.includes("beacon-ops score")) || "";
+  async function handleScenarioChange(event) {
+    const scenarioId = event.target.value;
+    setSelectedScenarioId(scenarioId);
+    setSampleLoading(true);
+    setStatusMessage("");
+    try {
+      const scenario = manifest.scenarios.find((item) => item.id === scenarioId);
+      const response = await fetch(scenario.payload_path);
+      if (!response.ok) {
+        throw new Error("Could not load the selected sample scenario.");
+      }
+      const payload = normalizeWorkspacePayload(await response.json());
+      setData(payload);
+      setSelectedAlertId(payload.selected_alert_id);
+      setSelectedProfile(payload.scenario.profile);
+      setSelectedInputFormat(payload.scenario.input_format);
+      setSelectedPreview("report_md");
+      setQuery("");
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setSampleLoading(false);
+    }
+  }
+
+  async function handleUploadSubmit(event) {
+    event.preventDefault();
+    if (!uploadFile) {
+      setStatusMessage("Choose a small CSV or conn.log file first.");
+      return;
+    }
+    if (backendState.status !== "ready") {
+      setStatusMessage("Live scoring is unavailable. Use the sample scenarios for now.");
+      return;
+    }
+
+    setUploadLoading(true);
+    setStatusMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("input_format", selectedInputFormat);
+      formData.append("profile", selectedProfile);
+      const response = await fetch(`${apiBaseUrl}/score`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail || "Live scoring failed.");
+      }
+      const normalized = normalizeWorkspacePayload(payload);
+      setData(normalized);
+      setSelectedAlertId(normalized.selected_alert_id);
+      setSelectedPreview("report_md");
+      setQuery("");
+      setStatusMessage(`Scored ${uploadFile.name} with the ${selectedProfile} profile.`);
+    } catch (error) {
+      setStatusMessage(error.message);
+    } finally {
+      setUploadLoading(false);
+    }
+  }
+
+  const metrics = data.metricMap;
+  const scenarioTitle =
+    data.source.kind === "uploaded"
+      ? data.source.filename || data.source.label || "Uploaded run"
+      : data.scenario.input_name;
 
   return (
     <main className="page-shell">
@@ -79,20 +179,102 @@ export default function DemoWorkspace({ data }) {
 
       <section className="workspace-header panel">
         <div className="workspace-header-main">
-          <div className="eyebrow">Inspection workspace</div>
-          <h1 className="workspace-title">One run, fully inspectable.</h1>
+          <div className="eyebrow">Interactive inspection workspace</div>
+          <h1 className="workspace-title">Sample runs and live scoring in one place.</h1>
           <p className="workspace-subtitle">
-            Ranked alerts, detailed evidence, real artifacts, skip diagnostics, and score
-            interpretation from the same checked-in operational example.
+            Switch between checked-in scenarios or upload a small flow file, then inspect the
+            same alerts, diagnostics, artifacts, and score interpretation surfaces.
           </p>
-        </div>
-        <div className="workspace-header-side">
-          <div className="workspace-meta-grid">
-            <MetaTile label="Scenario" value="netflow_demo.csv" />
-            <MetaTile label="Input format" value="netflow-ipfix-csv" />
-            <MetaTile label="Profile" value={String(profile)} />
-            <MetaTile label="Mode" value={String(metrics.Mode || "hybrid")} />
+          <div className="workspace-status-row">
+            <span className={`badge backend-${backendState.status}`}>{backendLabel(backendState)}</span>
+            <span className="badge">{data.source.kind === "uploaded" ? "uploaded result" : "sample scenario"}</span>
+            <span className="badge">{data.scenario.input_format}</span>
+            <span className="badge">{data.scenario.profile} profile</span>
           </div>
+          {statusMessage ? <div className="status-banner">{statusMessage}</div> : null}
+        </div>
+
+        <div className="workspace-header-side workspace-control-grid">
+          <div className="panel workspace-control-card">
+            <div className="section-head">
+              <div>
+                <h2>Sample scenario</h2>
+                <p>Swap between checked-in runs without changing the workspace shape.</p>
+              </div>
+            </div>
+            <label className="control-label" htmlFor="scenario-select">
+              Scenario
+            </label>
+            <select
+              id="scenario-select"
+              className="search-input"
+              value={selectedScenarioId}
+              onChange={handleScenarioChange}
+              disabled={sampleLoading}
+            >
+              {manifest.scenarios.map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.label}
+                </option>
+              ))}
+            </select>
+            <div className="control-help">
+              {manifest.scenarios.find((scenario) => scenario.id === selectedScenarioId)?.description}
+            </div>
+          </div>
+
+          <form className="panel workspace-control-card" onSubmit={handleUploadSubmit}>
+            <div className="section-head">
+              <div>
+                <h2>Upload and score</h2>
+                <p>Small-file live scoring through the separate Python service.</p>
+              </div>
+            </div>
+            <label className="control-label" htmlFor="input-format">
+              Input format
+            </label>
+            <select
+              id="input-format"
+              className="search-input"
+              value={selectedInputFormat}
+              onChange={(event) => setSelectedInputFormat(event.target.value)}
+            >
+              <option value="normalized-csv">normalized-csv</option>
+              <option value="zeek-conn">zeek-conn</option>
+              <option value="netflow-ipfix-csv">netflow-ipfix-csv</option>
+            </select>
+            <label className="control-label" htmlFor="profile-select">
+              Threshold profile
+            </label>
+            <select
+              id="profile-select"
+              className="search-input"
+              value={selectedProfile}
+              onChange={(event) => setSelectedProfile(event.target.value)}
+            >
+              <option value="conservative">conservative</option>
+              <option value="balanced">balanced</option>
+              <option value="sensitive">sensitive</option>
+            </select>
+            <label className="control-label" htmlFor="upload-file">
+              File
+            </label>
+            <input
+              id="upload-file"
+              className="file-input"
+              type="file"
+              accept=".csv,.log,.connlog,.conn.log"
+              onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+            />
+            <button
+              className="primary-link control-submit"
+              type="submit"
+              disabled={uploadLoading || backendState.status !== "ready"}
+            >
+              {uploadLoading ? "Scoring..." : "Score uploaded file"}
+            </button>
+            <div className="control-help">{backendState.message}</div>
+          </form>
         </div>
       </section>
 
@@ -102,7 +284,7 @@ export default function DemoWorkspace({ data }) {
             <div className="section-head">
               <div>
                 <h2>Run summary</h2>
-                <p>Core stats from the checked-in example.</p>
+                <p>{scenarioTitle}</p>
               </div>
             </div>
             <div className="sidebar-stat-list">
@@ -117,7 +299,7 @@ export default function DemoWorkspace({ data }) {
             <div className="section-head">
               <div>
                 <h2>Alerts</h2>
-                <p>Ranked suspicious flows.</p>
+                <p>Ranked suspicious flows from the active result payload.</p>
               </div>
             </div>
             <input
@@ -127,28 +309,35 @@ export default function DemoWorkspace({ data }) {
               onChange={(event) => setQuery(event.target.value)}
             />
             <div className="alert-list sidebar-alert-list">
-              {filteredAlerts.map((alert) => {
-                const active = String(alert.id) === String(selectedAlert?.id);
-                return (
-                  <button
-                    className={`alert-card${active ? " active" : ""}`}
-                    key={alert.id}
-                    onClick={() => setSelectedAlertId(alert.id)}
-                    type="button"
-                  >
-                    <div className="alert-flow">
-                      {alert.src} {"->"} {alert.dst}:{alert.port}/{alert.proto}
-                    </div>
-                    <div className="alert-meta">
-                      {alert.event_count} events | RF {Number(alert.rf_score).toFixed(3)}
-                    </div>
-                    <div className="badge-row">
-                      <SeverityBadge severity={alert.severity} />
-                      <span className="badge">{Number(alert.hybrid_score).toFixed(3)}</span>
-                    </div>
-                  </button>
-                );
-              })}
+              {filteredAlerts.length ? (
+                filteredAlerts.map((alert) => {
+                  const active = String(alert.id) === String(selectedAlert?.id);
+                  return (
+                    <button
+                      className={`alert-card${active ? " active" : ""}`}
+                      key={alert.id}
+                      onClick={() => setSelectedAlertId(alert.id)}
+                      type="button"
+                    >
+                      <div className="alert-flow">
+                        {alert.src} {"->"} {alert.dst}:{alert.port}/{alert.proto}
+                      </div>
+                      <div className="alert-meta">
+                        {alert.event_count} events | RF {Number(alert.rf_score).toFixed(3)}
+                      </div>
+                      <div className="badge-row">
+                        <SeverityBadge severity={alert.severity} />
+                        <span className="badge">{Number(alert.hybrid_score).toFixed(3)}</span>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="empty-state">
+                  No alerts exceeded the active policy for this run. Diagnostics and raw outputs are
+                  still available below.
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -158,7 +347,7 @@ export default function DemoWorkspace({ data }) {
             <div className="section-head">
               <div>
                 <h2>Selected alert</h2>
-                <p>What was ranked highly, and why.</p>
+                <p>The highest-value explanation surface for the current run.</p>
               </div>
             </div>
 
@@ -173,7 +362,7 @@ export default function DemoWorkspace({ data }) {
                     </div>
                     <div className="badge-row">
                       <SeverityBadge severity={selectedAlert.severity} />
-                      <span className="badge">{profile} profile</span>
+                      <span className="badge">{data.scenario.profile} profile</span>
                       <span className="badge">{selectedAlert.mode}</span>
                     </div>
                   </div>
@@ -183,10 +372,7 @@ export default function DemoWorkspace({ data }) {
                       label="Hybrid score"
                       value={Number(selectedAlert.hybrid_score).toFixed(3)}
                     />
-                    <ScoreTile
-                      label="RF score"
-                      value={Number(selectedAlert.rf_score).toFixed(3)}
-                    />
+                    <ScoreTile label="RF score" value={Number(selectedAlert.rf_score).toFixed(3)} />
                     <ScoreTile
                       label="Rule score"
                       value={
@@ -210,7 +396,13 @@ export default function DemoWorkspace({ data }) {
                   </div>
                   <div className="data-block">
                     <div className="detail-label">Top model features</div>
-                    <div>{selectedAlert.features}</div>
+                    <div className="token-row">
+                      {selectedAlert.model_features.map((feature) => (
+                        <span className="token" key={feature}>
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -226,18 +418,21 @@ export default function DemoWorkspace({ data }) {
                 </div>
               </div>
             ) : (
-              <p>No alert matches the current search.</p>
+              <div className="empty-state">
+                This run currently has no active alert. Use the raw outputs and diagnostics below to
+                inspect what happened anyway.
+              </div>
             )}
           </div>
 
           <div className="workspace-lower-grid">
-          <div className="panel">
-            <div className="section-head">
-              <div>
-                <h2>Diagnostics</h2>
-                <p>Accepted rows, skipped rows, and skip reasons.</p>
+            <div className="panel">
+              <div className="section-head">
+                <div>
+                  <h2>Diagnostics</h2>
+                  <p>Accepted rows, skipped rows, and recorded reasons.</p>
+                </div>
               </div>
-            </div>
               <div className="diagnostic-topline">
                 <DiagnosticPill label="Input rows" value={String(metrics["Input rows"] || 0)} />
                 <DiagnosticPill
@@ -250,12 +445,16 @@ export default function DemoWorkspace({ data }) {
                 />
               </div>
               <div className="diagnostics-grid">
-                {data.skip_reasons.map((item) => (
-                  <div className="diag-card" key={item.reason}>
-                    <div className="diag-reason">{formatReason(item.reason)}</div>
-                    <div className="diag-count">{item.count}</div>
-                  </div>
-                ))}
+                {data.skip_reasons.length ? (
+                  data.skip_reasons.map((item) => (
+                    <div className="diag-card" key={item.reason}>
+                      <div className="diag-reason">{formatReason(item.reason)}</div>
+                      <div className="diag-count">{item.count}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">No rows were skipped for this run.</div>
+                )}
               </div>
             </div>
 
@@ -263,7 +462,7 @@ export default function DemoWorkspace({ data }) {
               <div className="section-head">
                 <div>
                   <h2>Interpretation</h2>
-                  <p>Blunt score and limitation notes.</p>
+                  <p>Conservative wording stays attached to every result.</p>
                 </div>
               </div>
               <div className="note-list">
@@ -279,7 +478,7 @@ export default function DemoWorkspace({ data }) {
             <div className="section-head">
               <div>
                 <h2>Artifacts from the run</h2>
-                <p>Raw outputs from the same checked-in scenario.</p>
+                <p>Raw outputs from the current sample or uploaded result.</p>
               </div>
             </div>
             <div className="tab-row">
@@ -302,17 +501,17 @@ export default function DemoWorkspace({ data }) {
               <div className="section-head">
                 <div>
                   <h2>Command details</h2>
-                  <p>Exact commands used for the checked-in example and model path.</p>
+                  <p>Overview only shows the score command. Full details live here.</p>
                 </div>
               </div>
               <div className="note-list">
                 <div>
                   <div className="overview-command-label">Train model</div>
-                  <pre className="code-block compact-code">{trainCommand}</pre>
+                  <pre className="code-block compact-code">{data.commands.train_model}</pre>
                 </div>
                 <div>
                   <div className="overview-command-label">Score run</div>
-                  <pre className="code-block compact-code">{scoreCommand}</pre>
+                  <pre className="code-block compact-code">{data.commands.score}</pre>
                 </div>
               </div>
             </div>
@@ -321,14 +520,14 @@ export default function DemoWorkspace({ data }) {
               <div className="section-head">
                 <div>
                   <h2>Technical notes</h2>
-                  <p>Why this run is more than UI polish.</p>
+                  <p>Why the workflow is more than UI polish.</p>
                 </div>
               </div>
               <div className="note-list">
-                <NoteRow text="Real checked-in operational example, not hand-written UI values." />
-                <NoteRow text="Grouped-validation-backed threshold profile chosen from out-of-fold scores." />
+                <NoteRow text="Sample scenarios and uploaded runs render through the same result model." />
+                <NoteRow text="Grouped-validation-backed threshold profiles come from out-of-fold scores." />
                 <NoteRow text="Ingestion diagnostics record loaded rows, skipped rows, and skip reasons." />
-                <NoteRow text="RF score is shown as a ranking signal with conservative wording." />
+                <NoteRow text="The upload service wraps the existing operational scorer instead of duplicating logic." />
               </div>
             </div>
           </div>
@@ -336,6 +535,16 @@ export default function DemoWorkspace({ data }) {
       </section>
     </main>
   );
+}
+
+function backendLabel(backendState) {
+  if (backendState.status === "ready") {
+    return "live scoring ready";
+  }
+  if (backendState.status === "checking") {
+    return "checking live scoring";
+  }
+  return "live scoring unavailable";
 }
 
 function DiagnosticPill({ label, value }) {
@@ -352,15 +561,6 @@ function KeyValue({ label, value }) {
     <div className="key-value-row">
       <span>{label}</span>
       <strong>{value}</strong>
-    </div>
-  );
-}
-
-function MetaTile({ label, value }) {
-  return (
-    <div className="proof-card compact">
-      <div className="metric-label">{label}</div>
-      <div className="proof-value">{value}</div>
     </div>
   );
 }

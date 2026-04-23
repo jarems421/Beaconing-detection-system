@@ -10,10 +10,9 @@ const proofChips = [
 export default function DemoOverview({ data }) {
   const topAlert = data.alerts[0] || null;
   const metrics = Object.fromEntries(data.metrics.map((item) => [item.label, item.value]));
-  const scenario = buildScenario(data.commands);
+  const scenario = data.scenario;
   const profile = metrics.Profile || "balanced";
-  const scoreCommand =
-    data.commands.find((command) => command.includes("beacon-ops score")) || data.commands[0];
+  const scoreCommand = data.commands.score || "";
 
   return (
     <main className="page-shell">
@@ -63,7 +62,7 @@ export default function DemoOverview({ data }) {
               </div>
               <div className="badge-row">
                 <SeverityBadge severity={topAlert.severity} />
-                <span className="badge">{scenario.fixtureName}</span>
+                <span className="badge">{scenario.input_name}</span>
                 <span className="badge">{profile} profile</span>
               </div>
               <div className="featured-score">
@@ -174,25 +173,6 @@ function WorkflowStep({ body, title }) {
       <p>{body}</p>
     </div>
   );
-}
-
-function buildScenario(commands) {
-  const scoreCommand = commands.find((command) => command.includes("beacon-ops score")) || "";
-  const inputPath = flagValue(scoreCommand, "--input");
-  const inputFormat = flagValue(scoreCommand, "--input-format");
-  return {
-    fixtureName: inputPath ? inputPath.split("/").pop() : "checked-in fixture",
-    inputFormat: inputFormat || "operational input",
-  };
-}
-
-function flagValue(command, flag) {
-  const parts = command.split(/\s+/);
-  const index = parts.indexOf(flag);
-  if (index === -1) {
-    return "";
-  }
-  return parts[index + 1] || "";
 }
 
 function shortOutputDescription(fileName) {
