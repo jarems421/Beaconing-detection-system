@@ -1,0 +1,44 @@
+{
+  "default_scenario_id": "suspicious-netflow",
+  "scenarios": [
+    {
+      "id": "suspicious-netflow",
+      "label": "Suspicious NetFlow/IPFIX run",
+      "description": "A checked-in NetFlow/IPFIX fixture with a strong periodic candidate plus one skipped unsupported row.",
+      "category": "suspicious",
+      "input_format": "netflow-ipfix-csv",
+      "input_name": "netflow_demo.csv",
+      "profile": "balanced",
+      "alert_count": 2,
+      "loaded_events": 10,
+      "skipped_rows": 1,
+      "payload_path": "/demo-scenarios/suspicious-netflow.json"
+    },
+    {
+      "id": "low-signal-zeek",
+      "label": "Low-signal Zeek conn.log run",
+      "description": "A short Zeek conn.log example that exercises ingestion and scoring with limited evidence and no dominant alert.",
+      "category": "low-signal",
+      "input_format": "zeek-conn",
+      "input_name": "zeek_parity.conn.log",
+      "profile": "balanced",
+      "alert_count": 1,
+      "loaded_events": 2,
+      "skipped_rows": 0,
+      "payload_path": "/demo-scenarios/low-signal-zeek.json"
+    },
+    {
+      "id": "messy-netflow",
+      "label": "Messy NetFlow/IPFIX run",
+      "description": "A small input with one unsupported protocol row to surface skip reasons and limited evidence handling.",
+      "category": "failure-mode",
+      "input_format": "netflow-ipfix-csv",
+      "input_name": "netflow_unsupported_protocol.csv",
+      "profile": "balanced",
+      "alert_count": 1,
+      "loaded_events": 1,
+      "skipped_rows": 1,
+      "payload_path": "/demo-scenarios/messy-netflow.json"
+    }
+  ]
+}

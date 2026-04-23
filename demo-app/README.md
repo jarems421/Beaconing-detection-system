@@ -23,11 +23,18 @@ npm run dev
 The app reads checked-in demo data from:
 
 ```text
-public/demo-data.json
+public/demo-scenarios/manifest.json
+public/demo-scenarios/*.json
 ```
 
 Refresh that file from the repo root with:
 
 ```powershell
 python scripts/build_operational_demo.py
+```
+
+To enable live upload scoring in the deployed app, set:
+
+```text
+NEXT_PUBLIC_DEMO_API_BASE_URL=https://your-demo-service.example.com
 ```
