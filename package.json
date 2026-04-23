@@ -1,0 +1,12 @@
+{
+  "name": "beaconing-detection-system",
+  "private": true,
+  "workspaces": [
+    "demo-app"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace demo-app",
+    "build": "npm run build --workspace demo-app",
+    "start": "npm run start --workspace demo-app"
+  }
+}
