@@ -9,19 +9,27 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from beacon_detector.data import SyntheticTrafficConfig
+from beacon_detector.features import extract_features_from_flows
 from beacon_detector.ops import (
     export_synthetic_normalized_csv,
     run_batch_score,
     run_rules_only_score,
     train_random_forest_model,
 )
-from beacon_detector.ops.ingest import load_netflow_ipfix_csv, load_zeek_conn_log
+from beacon_detector.ops.grouping import build_operational_flows
+from beacon_detector.ops.ingest import (
+    load_netflow_ipfix_csv,
+    load_operational_input,
+    load_zeek_conn_log,
+)
 from beacon_detector.ops.model import (
     OpsGroupedValidationResult,
     OpsValidationPrediction,
     threshold_profile_metadata,
 )
 from beacon_detector.ops.schema import validate_normalized_csv
+
+FIXTURE_ROOT = Path("data/operational/fixtures")
 
 
 class OperationalPipelineTests(unittest.TestCase):
@@ -111,6 +119,176 @@ class OperationalPipelineTests(unittest.TestCase):
         self.assertEqual(events[0].protocol, "tcp")
         self.assertEqual(events[0].total_bytes, 150)
         self.assertEqual(events[0].duration_seconds, 1.0)
+
+    def test_checked_in_netflow_fixture_loads_common_aliases_and_udp(self) -> None:
+        result = load_operational_input(
+            FIXTURE_ROOT / "netflow_common_aliases.csv",
+            input_format="netflow-ipfix-csv",
+        )
+
+        self.assertEqual(result.diagnostics.input_row_count, 2)
+        self.assertEqual(result.diagnostics.loaded_event_count, 2)
+        self.assertEqual(result.diagnostics.skipped_row_count, 0)
+        self.assertEqual(result.events[1].protocol, "udp")
+        self.assertEqual(result.events[1].dst_port, 53)
+        self.assertEqual(result.events[1].total_packets, 4)
+
+    def test_checked_in_ipfix_fixture_loads_ipv6_information_elements(self) -> None:
+        result = load_operational_input(
+            FIXTURE_ROOT / "ipfix_information_elements_ipv6.csv",
+            input_format="netflow-ipfix-csv",
+        )
+
+        self.assertEqual(result.diagnostics.input_row_count, 2)
+        self.assertEqual(result.events[0].src_ip, "2001:db8::5")
+        self.assertEqual(result.events[0].dst_ip, "2001:db8::10")
+        self.assertEqual(result.events[0].protocol, "tcp")
+        self.assertEqual(result.events[1].protocol, "udp")
+        self.assertEqual(result.events[1].duration_seconds, 0.5)
+
+    def test_checked_in_netflow_fixture_loads_iso_timestamps_without_optional_fields(
+        self,
+    ) -> None:
+        result = load_operational_input(
+            FIXTURE_ROOT / "netflow_iso_timestamps.csv",
+            input_format="netflow-ipfix-csv",
+        )
+
+        self.assertEqual(result.diagnostics.loaded_event_count, 2)
+        self.assertIsNone(result.events[0].total_packets)
+        self.assertEqual(
+            result.events[0].timestamp.isoformat(),
+            "2026-01-01T00:00:00+00:00",
+        )
+        self.assertEqual(result.events[1].duration_seconds, 3.0)
+
+    def test_checked_in_netflow_fixture_loads_transport_protocol_aliases(self) -> None:
+        result = load_operational_input(
+            FIXTURE_ROOT / "netflow_transport_protocol.csv",
+            input_format="netflow-ipfix-csv",
+        )
+
+        self.assertEqual(result.diagnostics.loaded_event_count, 1)
+        self.assertEqual(result.events[0].protocol, "tcp")
+        self.assertEqual(result.events[0].dst_ip, "203.0.113.30")
+        self.assertEqual(result.events[0].duration_seconds, 2.0)
+
+    def test_checked_in_netflow_fixture_skips_unsupported_protocol_with_diagnostics(
+        self,
+    ) -> None:
+        result = load_operational_input(
+            FIXTURE_ROOT / "netflow_unsupported_protocol.csv",
+            input_format="netflow-ipfix-csv",
+        )
+
+        self.assertEqual(result.diagnostics.input_row_count, 2)
+        self.assertEqual(result.diagnostics.loaded_event_count, 1)
+        self.assertEqual(result.diagnostics.skipped_row_count, 1)
+        self.assertEqual(
+            result.diagnostics.skipped_row_reasons,
+            {"unsupported_protocol": 1},
+        )
+
+    def test_checked_in_zeek_fixture_skips_unsupported_protocol_with_diagnostics(
+        self,
+    ) -> None:
+        result = load_operational_input(
+            FIXTURE_ROOT / "zeek_unsupported_protocol.conn.log",
+            input_format="zeek-conn",
+        )
+
+        self.assertEqual(result.diagnostics.input_row_count, 2)
+        self.assertEqual(result.diagnostics.loaded_event_count, 1)
+        self.assertEqual(result.diagnostics.skipped_row_count, 1)
+        self.assertEqual(
+            result.diagnostics.skipped_row_reasons,
+            {"unsupported_protocol": 1},
+        )
+
+    def test_checked_in_netflow_missing_required_field_fails_clearly(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            r"NetFlow/IPFIX CSV row 2.*dst_ip, destination_ip, dstaddr",
+        ):
+            load_netflow_ipfix_csv(FIXTURE_ROOT / "netflow_missing_required.csv")
+
+    def test_checked_in_netflow_invalid_port_fails_clearly(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            r"NetFlow/IPFIX CSV row 2: dst_port must be between 0 and 65535",
+        ):
+            load_netflow_ipfix_csv(FIXTURE_ROOT / "netflow_invalid_port.csv")
+
+    def test_checked_in_netflow_negative_duration_fails_clearly(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            r"NetFlow/IPFIX CSV row 2: duration_seconds must be non-negative",
+        ):
+            load_netflow_ipfix_csv(FIXTURE_ROOT / "netflow_negative_duration.csv")
+
+    def test_checked_in_header_only_inputs_fail_clearly(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            r"NetFlow/IPFIX CSV contains no data rows",
+        ):
+            load_netflow_ipfix_csv(FIXTURE_ROOT / "netflow_header_only.csv")
+        with self.assertRaisesRegex(
+            ValueError,
+            r"Zeek conn\.log contains no data rows",
+        ):
+            load_zeek_conn_log(FIXTURE_ROOT / "zeek_header_only.conn.log")
+
+    def test_checked_in_zeek_and_netflow_parity_match_events_features_and_scores(
+        self,
+    ) -> None:
+        zeek = load_operational_input(
+            FIXTURE_ROOT / "zeek_parity.conn.log",
+            input_format="zeek-conn",
+        )
+        netflow = load_operational_input(
+            FIXTURE_ROOT / "netflow_parity.csv",
+            input_format="netflow-ipfix-csv",
+        )
+
+        self.assertEqual(
+            [_event_signature(event) for event in zeek.events],
+            [_event_signature(event) for event in netflow.events],
+        )
+
+        zeek_flows, _ = build_operational_flows(zeek.events)
+        netflow_flows, _ = build_operational_flows(netflow.events)
+        zeek_features = extract_features_from_flows(zeek_flows)
+        netflow_features = extract_features_from_flows(netflow_flows)
+
+        self.assertEqual(
+            [_flow_signature(flow) for flow in zeek_flows],
+            [_flow_signature(flow) for flow in netflow_flows],
+        )
+        self.assertEqual(
+            [_feature_signature(row) for row in zeek_features],
+            [_feature_signature(row) for row in netflow_features],
+        )
+
+        output_dir = _clean_output_dir("tests/.tmp/ops_parity")
+        zeek_outputs = run_rules_only_score(
+            input_path=FIXTURE_ROOT / "zeek_parity.conn.log",
+            input_format="zeek-conn",
+            output_dir=output_dir / "zeek",
+        )
+        netflow_outputs = run_rules_only_score(
+            input_path=FIXTURE_ROOT / "netflow_parity.csv",
+            input_format="netflow-ipfix-csv",
+            output_dir=output_dir / "netflow",
+        )
+
+        self.assertEqual(
+            _rows(zeek_outputs.alerts_csv),
+            _rows(netflow_outputs.alerts_csv),
+        )
+        self.assertEqual(
+            _rows(zeek_outputs.scored_flows_csv),
+            _rows(netflow_outputs.scored_flows_csv),
+        )
 
     def test_cli_score_writes_outputs(self) -> None:
         output_dir = _clean_output_dir("tests/.tmp/ops_cli")
@@ -580,6 +758,52 @@ def _write_csv(path: Path, rows: list[dict[str, str]]) -> None:
         writer = csv.DictWriter(output_file, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
+
+
+def _event_signature(event) -> tuple[object, ...]:
+    return (
+        event.timestamp.isoformat(),
+        event.src_ip,
+        event.src_port,
+        event.direction,
+        event.dst_ip,
+        event.dst_port,
+        event.protocol,
+        event.total_bytes,
+        event.duration_seconds,
+        event.total_packets,
+    )
+
+
+def _flow_signature(flow) -> tuple[object, ...]:
+    return (
+        flow.flow_key.src_ip,
+        flow.flow_key.direction,
+        flow.flow_key.dst_ip,
+        flow.flow_key.dst_port,
+        flow.flow_key.protocol,
+        flow.start_time.isoformat(),
+        flow.end_time.isoformat(),
+        len(flow.events),
+    )
+
+
+def _feature_signature(row) -> tuple[object, ...]:
+    return (
+        row.flow_key.src_ip,
+        row.flow_key.direction,
+        row.flow_key.dst_ip,
+        row.flow_key.dst_port,
+        row.flow_key.protocol,
+        row.label,
+        row.event_count,
+        row.total_bytes,
+        row.flow_duration_seconds,
+        row.mean_interarrival_seconds,
+        row.inter_arrival_cv,
+        row.periodicity_score,
+        row.size_cv,
+    )
 
 
 def _rows(path: Path) -> list[dict[str, str]]:

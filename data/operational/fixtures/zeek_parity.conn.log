@@ -1,0 +1,4 @@
+#separator \x09
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	duration	orig_bytes	resp_bytes	orig_pkts	resp_pkts
+1767225600.000000	C1	10.0.0.5	1111	203.0.113.10	443	tcp	1.0	100	50	2	1
+1767225660.000000	C2	10.0.0.5	2222	203.0.113.10	443	tcp	1.0	100	50	2	1
