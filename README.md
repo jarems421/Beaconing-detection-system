@@ -106,6 +106,7 @@ those native features have discriminative power under scenario-aware splits.
 | --- | --- |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
+| `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
 | `docs/project_walkthrough.md` | Guided project walkthrough. |
 | `docs/report_draft.md` | More complete technical writeup. |
 | `results/figures/final_story/` | Headline figures to view first. |
@@ -160,6 +161,55 @@ Run a quick synthetic evaluation:
 ```powershell
 python -m beacon_detector.evaluation.run --quick
 ```
+
+## Operational Batch CLI
+
+The operational v1 path scores a normalized CSV or Zeek `conn.log` as one batch and writes four
+default outputs:
+
+```text
+alerts.csv
+scored_flows.csv
+run_summary.json
+report.md
+```
+
+Canonical normalized CSV columns:
+
+| Column | Required | Notes |
+| --- | --- | --- |
+| `timestamp` | Yes | ISO-8601 timestamp; naive timestamps are treated as UTC. |
+| `src_ip` | Yes | Source host. |
+| `direction` | Yes | Direction label used in the flow grouping key. |
+| `dst_ip` | Yes | Destination host. |
+| `dst_port` | Yes | Destination port. |
+| `protocol` | Yes | `tcp` or `udp`. |
+| `total_bytes` | Yes | Non-negative integer. |
+| `src_port` | No | Captured for context, not used in default grouping. |
+| `duration_seconds` | No | Non-negative numeric value. |
+| `total_packets` | No | Non-negative integer. |
+
+Validate a normalized CSV:
+
+```powershell
+beacon-ops validate --input data/operational/sample_normalized.csv
+```
+
+Score a normalized CSV:
+
+```powershell
+beacon-ops score --input data/operational/sample_normalized.csv --input-format normalized-csv --output-dir results/operational/run_001
+```
+
+Score a Zeek `conn.log`:
+
+```powershell
+beacon-ops score --input data/zeek/conn.log --input-format zeek-conn --output-dir results/operational/zeek_run_001
+```
+
+The current operational detector is the conservative rules path. The Random Forest hybrid layer is
+the next planned upgrade and will use separate `train-model` and `score` commands with a saved model
+artifact.
 
 ## Reproduce Key Artifacts
 
