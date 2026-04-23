@@ -5,8 +5,6 @@ const proofChips = [
   "hybrid rules + RF",
   "validation-backed thresholds",
   "explainable outputs",
-  "diagnostics",
-  "CI-backed workflow",
 ];
 
 export default function DemoOverview({ data }) {
@@ -14,6 +12,8 @@ export default function DemoOverview({ data }) {
   const metrics = Object.fromEntries(data.metrics.map((item) => [item.label, item.value]));
   const scenario = buildScenario(data.commands);
   const profile = metrics.Profile || "balanced";
+  const scoreCommand =
+    data.commands.find((command) => command.includes("beacon-ops score")) || data.commands[0];
 
   return (
     <main className="page-shell">
@@ -21,14 +21,16 @@ export default function DemoOverview({ data }) {
         <div className="top-nav-brand">Beacon Ops Demo</div>
         <div className="top-nav-links">
           <span className="top-nav-current">Overview</span>
-          <Link href="/workspace">Open workspace</Link>
+          <Link className="top-nav-cta" href="/workspace">
+            Open workspace
+          </Link>
         </div>
       </div>
 
       <section className="overview-hero">
         <div className="overview-hero-copy panel">
           <div className="eyebrow">Operational Beaconing Detection Demo</div>
-          <h1>One checked-in run. One clear operational workflow.</h1>
+          <h1>One checked-in run. One credible operational workflow.</h1>
           <p className="hero-subtitle">
             Ingests Zeek, NetFlow/IPFIX, and normalized CSV flow data, scores suspicious periodic
             traffic with hybrid rules + Random Forest ranking, and produces explainable alerts with
@@ -43,28 +45,13 @@ export default function DemoOverview({ data }) {
             ))}
           </div>
 
-          <div className="proof-strip">
-            <OverviewProof label="Scenario" value={scenario.fixtureName} detail={scenario.inputFormat} />
-            <OverviewProof label="Profile" value={String(profile)} detail={profileMeaning(String(profile))} />
-            <OverviewProof
-              label="Alert count"
-              value={String(metrics["Alert count"] || 0)}
-              detail={`${metrics["Loaded events"] || 0} loaded events`}
-            />
-            <OverviewProof
-              label="Skipped rows"
-              value={String(metrics["Skipped rows"] || 0)}
-              detail="visible in diagnostics"
-            />
-          </div>
-
           <div className="overview-actions">
             <Link className="primary-link" href="/workspace">
               Open demo workspace
             </Link>
-            <div className="overview-command-label">Exact command</div>
+            <div className="overview-command-label">Example score command</div>
           </div>
-          <pre className="code-block compact-code">{data.commands.join("\n\n")}</pre>
+          <pre className="code-block compact-code">{scoreCommand}</pre>
         </div>
 
         <div className="overview-featured panel">
@@ -76,6 +63,7 @@ export default function DemoOverview({ data }) {
               </div>
               <div className="badge-row">
                 <SeverityBadge severity={topAlert.severity} />
+                <span className="badge">{scenario.fixtureName}</span>
                 <span className="badge">{profile} profile</span>
               </div>
               <div className="featured-score">
@@ -90,6 +78,10 @@ export default function DemoOverview({ data }) {
                   <div className="featured-score-value small">
                     {Number(topAlert.rf_score).toFixed(3)}
                   </div>
+                </div>
+                <div>
+                  <div className="metric-label">Threshold</div>
+                  <div className="featured-score-value small">{thresholdLabel(data)}</div>
                 </div>
               </div>
               <div className="detail-label">Why this rose to the top</div>
@@ -132,31 +124,16 @@ export default function DemoOverview({ data }) {
           <div className="section-head">
             <div>
               <h2>What the run produced</h2>
-              <p>Same checked-in scenario, four default outputs.</p>
+              <p>Four default artifacts from the same checked-in scenario.</p>
             </div>
           </div>
           <div className="output-card-grid">
             {data.output_files.map((file) => (
               <div className="output-card static" key={file.name}>
                 <div className="file-name">{file.name}</div>
-                <p>{file.description}</p>
+                <p>{shortOutputDescription(file.name)}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="section-head">
-            <div>
-              <h2>Why this is credible</h2>
-              <p>Engineering choices surfaced before the deeper workspace.</p>
-            </div>
-          </div>
-          <div className="note-list">
-            <NoteRow text="Real checked-in operational example, not hand-written UI values." />
-            <NoteRow text="Grouped-validation-backed threshold profile chosen from out-of-fold scores." />
-            <NoteRow text="Ingestion diagnostics record loaded rows, skipped rows, and skip reasons." />
-            <NoteRow text="RF score is shown as a ranking signal with conservative wording." />
           </div>
         </div>
       </section>
@@ -182,20 +159,6 @@ function MetricCard({ label, value }) {
     <div className="metric-card">
       <div className="metric-label">{label}</div>
       <div className="metric-value">{value}</div>
-    </div>
-  );
-}
-
-function NoteRow({ text }) {
-  return <div className="note-row">{text}</div>;
-}
-
-function OverviewProof({ detail, label, value }) {
-  return (
-    <div className="proof-card">
-      <div className="metric-label">{label}</div>
-      <div className="proof-value">{value}</div>
-      <p>{detail}</p>
     </div>
   );
 }
@@ -232,12 +195,27 @@ function flagValue(command, flag) {
   return parts[index + 1] || "";
 }
 
-function profileMeaning(profile) {
-  if (profile === "conservative") {
-    return "fewer false positives first";
+function shortOutputDescription(fileName) {
+  if (fileName === "alerts.csv") {
+    return "ranked suspicious flows";
   }
-  if (profile === "sensitive") {
-    return "higher recall first";
+  if (fileName === "scored_flows.csv") {
+    return "rules, RF, and hybrid scores";
   }
-  return "grouped-validation F1 target";
+  if (fileName === "run_summary.json") {
+    return "machine-readable diagnostics";
+  }
+  return "analyst-readable report";
+}
+
+function thresholdLabel(data) {
+  try {
+    const summary = JSON.parse(data.previews.run_summary_json);
+    if (summary.threshold === undefined) {
+      return "n/a";
+    }
+    return Number(summary.threshold).toFixed(2);
+  } catch {
+    return "n/a";
+  }
 }

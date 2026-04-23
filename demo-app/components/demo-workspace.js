@@ -62,6 +62,10 @@ export default function DemoWorkspace({ data }) {
 
   const profile = summary?.profile || "balanced";
   const metrics = Object.fromEntries(data.metrics.map((item) => [item.label, item.value]));
+  const trainCommand =
+    data.commands.find((command) => command.includes("beacon-ops train-model")) || "";
+  const scoreCommand =
+    data.commands.find((command) => command.includes("beacon-ops score")) || "";
 
   return (
     <main className="page-shell">
@@ -227,13 +231,13 @@ export default function DemoWorkspace({ data }) {
           </div>
 
           <div className="workspace-lower-grid">
-            <div className="panel">
-              <div className="section-head">
-                <div>
-                  <h2>Diagnostics</h2>
-                  <p>Accepted rows, skipped rows, and skip reasons.</p>
-                </div>
+          <div className="panel">
+            <div className="section-head">
+              <div>
+                <h2>Diagnostics</h2>
+                <p>Accepted rows, skipped rows, and skip reasons.</p>
               </div>
+            </div>
               <div className="diagnostic-topline">
                 <DiagnosticPill label="Input rows" value={String(metrics["Input rows"] || 0)} />
                 <DiagnosticPill
@@ -291,6 +295,42 @@ export default function DemoWorkspace({ data }) {
               ))}
             </div>
             <pre className="code-block preview-block">{data.previews[selectedPreview]}</pre>
+          </div>
+
+          <div className="workspace-lower-grid">
+            <div className="panel">
+              <div className="section-head">
+                <div>
+                  <h2>Command details</h2>
+                  <p>Exact commands used for the checked-in example and model path.</p>
+                </div>
+              </div>
+              <div className="note-list">
+                <div>
+                  <div className="overview-command-label">Train model</div>
+                  <pre className="code-block compact-code">{trainCommand}</pre>
+                </div>
+                <div>
+                  <div className="overview-command-label">Score run</div>
+                  <pre className="code-block compact-code">{scoreCommand}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <div>
+                  <h2>Technical notes</h2>
+                  <p>Why this run is more than UI polish.</p>
+                </div>
+              </div>
+              <div className="note-list">
+                <NoteRow text="Real checked-in operational example, not hand-written UI values." />
+                <NoteRow text="Grouped-validation-backed threshold profile chosen from out-of-fold scores." />
+                <NoteRow text="Ingestion diagnostics record loaded rows, skipped rows, and skip reasons." />
+                <NoteRow text="RF score is shown as a ranking signal with conservative wording." />
+              </div>
+            </div>
           </div>
         </section>
       </section>
