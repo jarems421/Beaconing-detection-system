@@ -5,7 +5,7 @@ normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV inputs.
 
 Hybrid rules + Random Forest scoring, validation-backed threshold profiles, ingestion diagnostics,
 and conservative score-reporting safeguards sit alongside the full synthetic and CTU-13 evaluation
-pipeline.
+pipeline, a live demo workspace, and a separate upload-scoring service.
 
 **Headline result:** strong synthetic performance does not automatically transfer to public flow
 data. Minimum evidence requirements and schema/domain shift remain the core limits.
@@ -35,21 +35,37 @@ data. Minimum evidence requirements and schema/domain shift remain the core limi
 | Public-data takeaway | CTU-13 exposes schema/domain shift that synthetic results alone would hide. |
 | Final claim | Serious flow-level detection system and comparative research repo, not a production SOC platform. |
 
-## Operational Architecture
+## Live Demo
+
+The repo now includes a two-layer demo:
+
+- `/` overview page for the project story
+- `/workspace` inspection view for alerts, diagnostics, and raw outputs
+- a separate Python scoring service for small uploaded files
+
+That split keeps the overview readable while still letting people test the actual workflow.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[Normalized CSV / Zeek conn.log / NetFlow-IPFIX CSV] --> B[Input validation and alias mapping]
-    B --> C[Flow grouping<br/>src_ip + dst_ip + dst_port + protocol + direction]
-    C --> D[Behavioural feature extraction]
-    D --> E1[Rules baseline]
-    D --> E2[Saved Random Forest artifact]
-    E1 --> F[Hybrid decision policy]
-    E2 --> F
-    F --> G[alerts.csv]
-    F --> H[scored_flows.csv]
-    F --> I[run_summary.json]
-    F --> J[report.md]
+    A[Checked-in sample scenarios<br/>or uploaded flow file] --> B[Next.js overview and workspace]
+    B --> C[Python demo scoring service]
+    C --> D[Input validation and alias mapping]
+    D --> E[Flow grouping<br/>src_ip + dst_ip + dst_port + protocol + direction]
+    E --> F[Behavioural feature extraction]
+    F --> G1[Rules baseline]
+    F --> G2[Saved Random Forest artifact]
+    G1 --> H[Hybrid decision policy]
+    G2 --> H
+    H --> I[alerts.csv]
+    H --> J[scored_flows.csv]
+    H --> K[run_summary.json]
+    H --> L[report.md]
+    I --> B
+    J --> B
+    K --> B
+    L --> B
 ```
 
 ## Core Result
@@ -77,6 +93,13 @@ synthetic-transfer RF can detect many botnet-labelled flows but false-positives 
 CTU-native approaches are better aligned with the public data schema but still limited.
 
 ![CTU three-stage comparison](results/figures/final_story/03_ctu_three_stage_comparison.png)
+
+Headline tables that match these figures live in:
+
+- `results/tables/final_story/headline_detector_comparison.csv`
+- `results/tables/final_story/minimum_evidence_story_table.csv`
+- `results/tables/final_story/ctu_three_stage_comparison.csv`
+- `results/tables/final_story/ctu_supervised_tradeoff_table.csv`
 
 ## Results and Limits
 
@@ -115,8 +138,11 @@ those native features have discriminative power under scenario-aware splits.
 | Path | Purpose |
 | --- | --- |
 | `demo-app/` | Next.js app for the operational demo, ready for Vercel with `demo-app` as the root directory. |
+| `demo-app/public/demo-scenarios/` | Checked-in sample scenario payloads used by the live demo workspace. |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
+| `src/beacon_detector/demo_service/` | Separate Python API for live upload-and-score demo requests. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
+| `docs/live_demo_service.md` | Local run/deploy notes for the upload-scoring service. |
 | `docs/operational_demo.md` | Real CLI demo flow and static visual demo entry point. |
 | `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
 | `docs/operational_example.md` | Tiny end-to-end operational CLI example using checked-in CSV fixtures. |
@@ -169,10 +195,30 @@ Run lint checks:
 python -m ruff check .
 ```
 
+Build the checked-in live demo scenarios:
+
+```powershell
+python scripts/build_operational_demo.py
+```
+
 Run a quick synthetic evaluation:
 
 ```powershell
 python -m beacon_detector.evaluation.run --quick
+```
+
+Run the upload-scoring demo service locally:
+
+```powershell
+python -m beacon_detector.demo_service
+```
+
+Run the Next.js demo app locally:
+
+```powershell
+cd demo-app
+npm install
+npm run dev
 ```
 
 ## Operational Batch CLI
@@ -273,6 +319,9 @@ Open the checked-in visual demo page:
 docs/operational_demo.html
 ```
 
+For the live app, use the Next.js workspace in `demo-app/` and point it at the separate Python
+service with `NEXT_PUBLIC_DEMO_API_BASE_URL`.
+
 Run the checked-in end-to-end example:
 
 ```powershell
@@ -307,6 +356,12 @@ Regenerate report-ready and final-story artifacts from existing exports:
 
 ```powershell
 python -c "from beacon_detector.evaluation.report_artifacts import build_report_artifacts; build_report_artifacts()"
+```
+
+Refresh the checked-in live demo scenario payloads:
+
+```powershell
+python scripts/build_operational_demo.py
 ```
 
 ## CTU Evaluation Commands
