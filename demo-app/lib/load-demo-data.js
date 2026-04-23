@@ -19,3 +19,7 @@ export async function loadDefaultDemoState() {
   const data = await loadScenarioPayload(defaultScenarioId);
   return { manifest, data };
 }
+
+export async function loadWorkspaceManifest() {
+  return loadDemoManifest();
+}
