@@ -19,6 +19,14 @@ results/operational/example_rules/run_summary.json
 results/operational/example_rules/report.md
 ```
 
+## Checked-In NetFlow Fixture
+
+```powershell
+beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
+```
+
+The resulting `run_summary.json` records input rows, loaded events, skipped rows, and skip reasons.
+
 ## Saved-Model Score
 
 ```powershell

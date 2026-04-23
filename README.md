@@ -165,8 +165,8 @@ python -m beacon_detector.evaluation.run --quick
 
 ## Operational Batch CLI
 
-The operational v1 path scores a normalized CSV or Zeek `conn.log` as one batch and writes four
-default outputs:
+The operational batch path scores a normalized CSV, Zeek `conn.log`, or NetFlow/IPFIX-style CSV as
+one batch and writes four default outputs:
 
 ```text
 alerts.csv
@@ -249,6 +249,12 @@ Score a NetFlow/IPFIX-style CSV:
 beacon-ops score --input data/flows/netflow.csv --input-format netflow-ipfix-csv --output-dir results/operational/netflow_run_001
 ```
 
+Run one exact checked-in NetFlow/IPFIX example:
+
+```powershell
+beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
+```
+
 Run the checked-in end-to-end example:
 
 ```powershell
@@ -258,7 +264,24 @@ beacon-ops score --input data/operational/example_score.csv --input-format norma
 Without `--model-artifact`, scoring uses the conservative rules path. With `--model-artifact`,
 scoring loads the saved Random Forest artifact and writes hybrid rules + RF scores without retraining.
 The `run_summary.json` file is also the score-run manifest: it records output roles, score semantics,
-grouping policy, runtime environment, and loaded-model metadata.
+ingestion counts, skipped-row reasons, grouping policy, runtime environment, and loaded-model
+metadata.
+
+## Interpret Scores
+
+- `rule_score` is the interpretable baseline score before thresholding.
+- `rf_score` is an uncalibrated Random Forest score from the saved artifact. Use it for ranking and threshold policies, not as a direct probability.
+- `hybrid_score` is the normalized ranking score used to combine rules and RF signals.
+- `confidence` is a threshold-relative display heuristic in `alerts.csv`, not a calibrated probability.
+- `report.md` and `run_summary.json` record the active threshold profile, grouped-validation metrics, and calibration diagnostics from out-of-fold training scores.
+
+## Known Ingestion Limits
+
+- The operational adapter path supports `tcp` and `udp`; unsupported protocols are skipped and recorded in `run_summary.json`.
+- Zeek ingestion expects a standard `conn.log` with a `#fields` header and the usual connection columns.
+- NetFlow/IPFIX CSV ingestion is alias-based. It handles common exporter field names and IPFIX Information Element names, but it does not implement template negotiation or every vendor-specific column.
+- Header-only inputs fail fast, malformed required values fail fast, and optional missing fields are left empty in the normalized event record.
+- CTU `.binetflow` remains in the research/demo path and is not the operational training contract.
 
 ## Reproduce Key Artifacts
 
