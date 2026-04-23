@@ -1,68 +1,81 @@
 # Beaconing Detection System
 
-Flow-level behavioural detection of command-and-control beaconing under timing jitter, size variation,
-burst traffic, hard benign profiles, and CTU-13 public-data domain shift.
+Operational and research system for flow-level command-and-control beaconing detection across
+normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV inputs.
 
-**Headline result:** strong controlled synthetic performance does not automatically transfer to
-public flow data. Minimum evidence requirements and CTU-13 schema/domain shift are the key limits.
+Hybrid rules + Random Forest scoring, validation-backed threshold profiles, ingestion diagnostics,
+and conservative score-reporting safeguards sit alongside the full synthetic and CTU-13 evaluation
+pipeline, a live demo workspace, and a separate upload-scoring service.
+
+**Headline result:** strong synthetic performance does not automatically transfer to public flow
+data. Minimum evidence requirements and schema/domain shift remain the core limits.
 
 ## Branch Guide
 
-- `main`: preserved research branch for the finalized comparative study, benchmark narrative, and report-style framing.
 - `operational-system`: operational CLI branch for normalized CSV, Zeek, and NetFlow/IPFIX ingestion, hybrid scoring, manifests, diagnostics, and CI-tested workflows.
+- `main`: preserved research branch for the finalized comparative study, benchmark narrative, and research-first framing.
+
+## Why This Repo
+
+- Real operational ingestion path: normalized CSV, Zeek `conn.log`, and NetFlow/IPFIX-style CSV.
+- Hybrid scoring path: interpretable rules plus saved-model Random Forest scoring without retraining.
+- Validation discipline: grouped validation, threshold profiles selected from out-of-fold scores, and explicit calibration diagnostics.
+- Operational outputs: ranked alerts, full scored flows, machine-readable run summary, and readable report.
+- Public-data honesty: CTU-13 results are separated from synthetic benchmark claims instead of folded into a cleaner story than the data supports.
 
 ## At A Glance
 
 | Question | Short answer |
 | --- | --- |
-| Task | Detect C2 beaconing from flow-level behaviour, not payload signatures. |
-| Approach | Compare interpretable rules, statistical scoring, anomaly detection, and supervised ML on synthetic and CTU-13 traffic. |
-| Best synthetic model | Random Forest is strongest on the controlled synthetic benchmark. |
-| Core finding | Minimum evidence matters: evasive low-event, high-jitter, size-overlapping flows need substantially more history. |
-| CTU takeaway | Public CTU-13 validation exposes schema/domain shift that synthetic results alone would hide. |
-| Final claim | This is a comparative flow-level detection study, not a production SOC detector. |
+| Detection task | Command-and-control beaconing from flow behaviour, not payload signatures. |
+| Operational path | Normalize logs, group flows, extract behavioural features, score, and write analyst-readable outputs. |
+| Research path | Compare rules, statistical scoring, anomaly baselines, and supervised ML under synthetic stress and CTU-13 transfer. |
+| Strongest synthetic model | Random Forest on the controlled synthetic benchmark. |
+| Strongest finding | Minimum evidence matters: evasive low-event, high-jitter, size-overlapping flows need substantially more history. |
+| Public-data takeaway | CTU-13 exposes schema/domain shift that synthetic results alone would hide. |
+| Final claim | Serious flow-level detection system and comparative research repo, not a production SOC platform. |
 
-## Motivation
+## Live Demo
 
-Beaconing can look periodic, but real benign traffic and evasive attacker behaviour make simple
-periodicity checks unreliable. Attackers can add timing jitter, vary payload sizes, communicate in
-bursts, or keep flows short enough that there is not much evidence to learn from. This project studies
-where flow-level behavioural detection works, where it breaks, and how results change when the same
-ideas are tested against CTU-13 public flow data.
+The repo now includes a two-layer demo:
 
-## Key Findings
+- `/` overview page for the project story
+- `/workspace` inspection view for alerts, diagnostics, and raw outputs
+- a separate Python scoring service for small uploaded files
 
-- Flow-level behavioural features can detect fixed, jittered, and bursty synthetic beaconing well.
-- Hard benign repeated traffic and shortcut/overlap stress expose false positives and brittle assumptions.
-- The strongest research result is a minimum-evidence finding: evasive beaconing needs enough flow
-  history before aggregate features become reliable.
-
-## Research Question
-
-How effectively can flow-level statistical and machine learning methods detect beaconing traffic when
-attackers introduce timing jitter, size variation, and burst-based communication patterns?
+That split keeps the overview readable while still letting people test the actual workflow.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A[Synthetic generator / CTU-13 public data] --> B[Flow construction]
-    B --> C[Behavioural feature extraction]
-    C --> D[Detector families]
-    D --> E[Evaluation tracks]
-    E --> F[Report-ready tables and figures]
-
-    D --> D1[Rules]
-    D --> D2[Statistical scoring]
-    D --> D3[Anomaly detection]
-    D --> D4[Supervised ML]
-
-    E --> E1[Synthetic hardened grid]
-    E --> E2[Stress and minimum-evidence studies]
-    E --> E3[CTU-13 validation]
+    A[Checked-in sample scenarios<br/>or uploaded flow file] --> B[Next.js overview and workspace]
+    B --> C[Python demo scoring service]
+    C --> D[Input validation and alias mapping]
+    D --> E[Flow grouping<br/>src_ip + dst_ip + dst_port + protocol + direction]
+    E --> F[Behavioural feature extraction]
+    F --> G1[Rules baseline]
+    F --> G2[Saved Random Forest artifact]
+    G1 --> H[Hybrid decision policy]
+    G2 --> H
+    H --> I[alerts.csv]
+    H --> J[scored_flows.csv]
+    H --> K[run_summary.json]
+    H --> L[report.md]
+    I --> B
+    J --> B
+    K --> B
+    L --> B
 ```
 
-## Key Results
+## Core Result
+
+Controlled synthetic benchmarks are strong, especially for Random Forest, but the decisive result is
+not raw benchmark performance. The decisive result is that evidence limits and public-data shift
+change the story materially: harder low-evidence beaconing requires more history, and CTU-13 shows
+that synthetic wins do not automatically survive contact with a different schema.
+
+## Results
 
 The strongest project finding is the minimum-evidence result: easy beaconing regimes can be detected
 with little flow history, while evasive time-and-size jittered traffic requires more evidence before
@@ -80,6 +93,21 @@ synthetic-transfer RF can detect many botnet-labelled flows but false-positives 
 CTU-native approaches are better aligned with the public data schema but still limited.
 
 ![CTU three-stage comparison](results/figures/final_story/03_ctu_three_stage_comparison.png)
+
+Headline tables that match these figures live in:
+
+- `results/tables/final_story/headline_detector_comparison.csv`
+- `results/tables/final_story/minimum_evidence_story_table.csv`
+- `results/tables/final_story/ctu_three_stage_comparison.csv`
+- `results/tables/final_story/ctu_supervised_tradeoff_table.csv`
+
+## Results and Limits
+
+- Flow-level behavioural features can detect fixed, jittered, and bursty synthetic beaconing well.
+- Hard benign repeated traffic and shortcut/overlap stress expose false positives and brittle assumptions.
+- Minimum evidence is a first-order constraint: low-event evasive flows remain difficult until enough history accumulates.
+- CTU-13 results are materially weaker than synthetic results and are reported separately on purpose.
+- RF operational scores remain uncalibrated ranking scores unless a later calibrated artifact path is added.
 
 ## Detector Tradeoffs
 
@@ -110,8 +138,11 @@ those native features have discriminative power under scenario-aware splits.
 | Path | Purpose |
 | --- | --- |
 | `demo-app/` | Next.js app for the operational demo, ready for Vercel with `demo-app` as the root directory. |
+| `demo-app/public/demo-scenarios/` | Checked-in sample scenario payloads used by the live demo workspace. |
 | `src/beacon_detector/` | Core package: generation/loading, flows, features, detectors, evaluation, and CLI. |
+| `src/beacon_detector/demo_service/` | Separate Python API for live upload-and-score demo requests. |
 | `tests/` | Regression tests for models, features, evaluation, CTU adapters, exports, and CLI plumbing. |
+| `docs/live_demo_service.md` | Local run/deploy notes for the upload-scoring service. |
 | `docs/operational_demo.md` | Real CLI demo flow and static visual demo entry point. |
 | `docs/operational_system.md` | Operational batch scoring design and v1 command contract. |
 | `docs/operational_example.md` | Tiny end-to-end operational CLI example using checked-in CSV fixtures. |
@@ -164,10 +195,30 @@ Run lint checks:
 python -m ruff check .
 ```
 
+Build the checked-in live demo scenarios:
+
+```powershell
+python scripts/build_operational_demo.py
+```
+
 Run a quick synthetic evaluation:
 
 ```powershell
 python -m beacon_detector.evaluation.run --quick
+```
+
+Run the upload-scoring demo service locally:
+
+```powershell
+python -m beacon_detector.demo_service
+```
+
+Run the Next.js demo app locally:
+
+```powershell
+cd demo-app
+npm install
+npm run dev
 ```
 
 ## Operational Batch CLI
@@ -268,6 +319,9 @@ Open the checked-in visual demo page:
 docs/operational_demo.html
 ```
 
+For the live app, use the Next.js workspace in `demo-app/` and point it at the separate Python
+service with `NEXT_PUBLIC_DEMO_API_BASE_URL`.
+
 Run the checked-in end-to-end example:
 
 ```powershell
@@ -302,6 +356,12 @@ Regenerate report-ready and final-story artifacts from existing exports:
 
 ```powershell
 python -c "from beacon_detector.evaluation.report_artifacts import build_report_artifacts; build_report_artifacts()"
+```
+
+Refresh the checked-in live demo scenario payloads:
+
+```powershell
+python scripts/build_operational_demo.py
 ```
 
 ## CTU Evaluation Commands

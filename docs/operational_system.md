@@ -3,6 +3,11 @@
 This branch starts the operational command-line system around a stable batch contract: one input,
 ranked beaconing alerts, machine-readable outputs, and a readable report.
 
+The same branch now also includes:
+
+- a Next.js demo app with an overview page and a deeper workspace
+- a separate Python upload-scoring service that wraps the real operational scorer
+
 ## v1 Input Contract
 
 The canonical input is a normalized CSV. Zeek `conn.log` and NetFlow/IPFIX CSV are adapted into that
@@ -67,10 +72,12 @@ Score a checked-in fixture:
 beacon-ops score --input data/operational/fixtures/netflow_common_aliases.csv --input-format netflow-ipfix-csv --output-dir results/operational/example_netflow_fixture
 ```
 
-Open the checked-in visual demo page:
+Live demo pieces:
 
 ```text
-docs/operational_demo.html
+demo-app/                     Next.js overview + workspace
+src/beacon_detector/demo_service/   upload-and-score API
+docs/live_demo_service.md     service run/deploy notes
 ```
 
 The NetFlow/IPFIX adapter accepts common CSV aliases for:
@@ -140,6 +147,17 @@ Every score run writes:
 `run_summary.json` is the score-run manifest. It records the output roles, score semantics,
 ingestion counts, skipped-row reasons, grouping policy, runtime environment, and loaded-model
 metadata.
+
+## Demo Architecture
+
+```text
+sample scenario or uploaded file
+-> demo workspace
+-> demo scoring service
+-> beacon-ops scoring pipeline
+-> alerts / scored flows / run summary / report
+-> workspace inspection view
+```
 
 ## Interpret Scores
 

@@ -1,0 +1,2 @@
+start_time,end_time,duration,source_ip,source_port,destination_ip,destination_port,protocol,total_bytes
+2026-01-01T00:00:00Z,2026-01-01T00:00:02Z,-1.0,10.0.0.5,1111,203.0.113.10,443,tcp,150

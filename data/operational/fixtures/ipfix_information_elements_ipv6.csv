@@ -1,0 +1,3 @@
+flowStartMilliseconds,flowEndMilliseconds,sourceIPv6Address,sourceTransportPort,destinationIPv6Address,destinationTransportPort,protocolIdentifier,octetDeltaCount,packetDeltaCount
+1767225600000,1767225601000,2001:db8::5,4444,2001:db8::10,443,6,150,3
+1767225660000,1767225660500,2001:db8::5,5555,2001:db8::20,53,udp,90,2

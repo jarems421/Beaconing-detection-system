@@ -1,7 +1,7 @@
 # Operational Demo
 
-Real CLI workflow backed by a checked-in NetFlow/IPFIX fixture and the same operational scoring
-path used elsewhere in the branch.
+Real demo workflow backed by checked-in scenarios, the Next.js workspace, and the same operational
+scoring path used elsewhere in the branch.
 
 ## Commands
 
@@ -10,7 +10,40 @@ beacon-ops train-model --train data/operational/example_train.csv --output-dir m
 beacon-ops score --input data/operational/fixtures/netflow_demo.csv --input-format netflow-ipfix-csv --model-artifact models/operational/demo_rf --profile balanced --output-dir results/operational/demo
 ```
 
-## Visual Demo Page
+## Live App
+
+The live app lives in:
+
+```text
+demo-app/
+```
+
+It has two layers:
+
+- `/` for the high-level overview
+- `/workspace` for alert investigation, diagnostics, raw outputs, and upload scoring
+
+To run locally:
+
+```powershell
+cd demo-app
+npm install
+npm run dev
+```
+
+To enable live upload scoring, start the separate service:
+
+```powershell
+python -m beacon_detector.demo_service
+```
+
+Then set:
+
+```text
+NEXT_PUBLIC_DEMO_API_BASE_URL=http://127.0.0.1:8010
+```
+
+## Static Demo Page
 
 Open:
 

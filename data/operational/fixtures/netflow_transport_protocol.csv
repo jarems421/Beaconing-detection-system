@@ -1,0 +1,2 @@
+flowStartSeconds,flowEndSeconds,sourceAddress,source_port,destinationAddress,destination_port,transportProtocol,octetTotalCount,packetTotalCount,durationSecs
+1767225720,1767225722,10.0.0.8,6000,203.0.113.30,8443,tcp,512,6,2.0
