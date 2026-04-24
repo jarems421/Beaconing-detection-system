@@ -9,13 +9,16 @@ At the top level, you can run a live demo, score normalized CSV / Zeek `conn.log
 NetFlow/IPFIX-style CSV, and inspect the result page by page. Under that, the repo still keeps the
 full comparative evaluation pipeline that produced the research figures and tables.
 
+**Open the live demo:** [Launch the Beaconing Detection System demo](https://beaconing-detection-system-wwuf.vercel.app)
+
 **Headline result:** strong synthetic performance does not automatically transfer to public flow
 data. Minimum evidence requirements and schema/domain shift remain the core limits.
 
 ## Where To Start
 
-- If you just want the shortest path through the project, stay on `main`, open the [live
-  demo](https://beaconing-detection-system-wwuf.vercel.app), and run one of the included inputs.
+- If you just want the shortest path through the project, stay on `main`, open the [Beaconing
+  Detection System live demo](https://beaconing-detection-system-wwuf.vercel.app), and run one of
+  the included inputs.
 - If you want the cleaner operational implementation history, the `operational-system` branch keeps
   that line of work intact as well.
 - If you want the research story first, jump to the figures and tables in the `Results` section
@@ -45,7 +48,7 @@ data. Minimum evidence requirements and schema/domain shift remain the core limi
 
 The demo is meant to feel guided rather than crowded:
 
-- Live app: [beaconing-detection-system-wwuf.vercel.app](https://beaconing-detection-system-wwuf.vercel.app)
+- Launch the live demo: [Open the Beaconing Detection System demo](https://beaconing-detection-system-wwuf.vercel.app)
 - `/` gives the short version of what the system does
 - `/workspace` starts the run
 - `/workspace/results` shows the main finding
