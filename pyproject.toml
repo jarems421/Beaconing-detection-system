@@ -19,6 +19,9 @@ dependencies = [
     "uvicorn==0.32.1",
 ]
 
+[project.scripts]
+beacon-ops = "beacon_detector.cli.ops:main"
+
 [project.optional-dependencies]
 dev = [
     "ruff==0.8.6",

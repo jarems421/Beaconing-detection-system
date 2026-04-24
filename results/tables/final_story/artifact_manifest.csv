@@ -1,25 +1,25 @@
 artifact_path,artifact_type,artifact_role,story_stage,source_file,source_experiment,generated_at,label_policy
-results/tables/final_story/headline_detector_comparison.csv,csv,headline,Synthetic benchmark evaluation,,final_story,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/tables/final_story/minimum_evidence_story_table.csv,csv,headline,Minimum-evidence analysis,,final_story,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/tables/final_story/ctu_three_stage_comparison.csv,csv,headline,Synthetic direct transfer to CTU,,final_story,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/final_story/ctu_supervised_tradeoff_table.csv,csv,headline,Within-CTU supervised evaluation,,final_story,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/final_story/final_findings_table.csv,csv,headline,Project conclusion,,final_story,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/final_story/01_synthetic_detector_comparison.png,png,headline,Synthetic benchmark evaluation,,final_story,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/final_story/02_minimum_evidence_core_result.png,png,headline,Minimum-evidence analysis,,final_story,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/final_story/03_ctu_three_stage_comparison.png,png,headline,Synthetic direct transfer to CTU,,final_story,2026-04-22T20:00:29.141854+00:00,conservative
-results/figures/final_story/04_ctu_supervised_per_scenario.png,png,headline,Within-CTU supervised evaluation,,final_story,2026-04-22T20:00:29.141854+00:00,conservative
-results/figures/final_story/05_final_research_story_summary.png,png,headline,Project conclusion,,final_story,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/tables/report_ready/detector_comparison_table.csv,csv,supporting,Synthetic benchmark evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/tables/report_ready/minimum_evidence_threshold_table.csv,csv,supporting,Minimum-evidence analysis,,existing_export,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/tables/report_ready/ctu_transfer_summary_table.csv,csv,supporting,Synthetic direct transfer to CTU,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/report_ready/ctu_native_feature_path_table.csv,csv,supporting,CTU-native unsupervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/report_ready/ctu_supervised_summary_table.csv,csv,supporting,Within-CTU supervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/ctu13_supervised/ctu_supervised_feature_importance.csv,csv,supporting,Within-CTU supervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/figures/synthetic_detector_comparison.png,png,supporting,Synthetic benchmark evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/minimum_evidence_detection_curve.png,png,supporting,Minimum-evidence analysis,,existing_export,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/ctu_transfer_vs_native_comparison.png,png,supporting,CTU-native unsupervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/ctu13_supervised/ctu_supervised_false_positive_diagnostics.csv,csv,diagnostic,Within-CTU supervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/tables/ctu13_supervised/ctu_supervised_false_negative_diagnostics.csv,csv,diagnostic,Within-CTU supervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
-results/figures/benign_false_positive_by_profile.png,png,diagnostic,Supporting evidence,,existing_export,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/rf_time_size_probability_curve.png,png,diagnostic,Supporting evidence,,existing_export,2026-04-22T20:00:29.141854+00:00,not_applicable
-results/figures/ctu_native_rf_feature_importances.png,png,diagnostic,CTU-native unsupervised evaluation,,existing_export,2026-04-22T20:00:29.141854+00:00,conservative
+results/tables/final_story/headline_detector_comparison.csv,csv,headline,Synthetic benchmark evaluation,,final_story,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/tables/final_story/minimum_evidence_story_table.csv,csv,headline,Minimum-evidence analysis,,final_story,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/tables/final_story/ctu_three_stage_comparison.csv,csv,headline,Synthetic direct transfer to CTU,,final_story,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/final_story/ctu_supervised_tradeoff_table.csv,csv,headline,Within-CTU supervised evaluation,,final_story,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/final_story/final_findings_table.csv,csv,headline,Project conclusion,,final_story,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/final_story/01_synthetic_detector_comparison.png,png,headline,Synthetic benchmark evaluation,,final_story,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/final_story/02_minimum_evidence_core_result.png,png,headline,Minimum-evidence analysis,,final_story,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/final_story/03_ctu_three_stage_comparison.png,png,headline,Synthetic direct transfer to CTU,,final_story,2026-04-23T17:20:11.083470+00:00,conservative
+results/figures/final_story/04_ctu_supervised_per_scenario.png,png,headline,Within-CTU supervised evaluation,,final_story,2026-04-23T17:20:11.083470+00:00,conservative
+results/figures/final_story/05_final_research_story_summary.png,png,headline,Project conclusion,,final_story,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/tables/report_ready/detector_comparison_table.csv,csv,supporting,Synthetic benchmark evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/tables/report_ready/minimum_evidence_threshold_table.csv,csv,supporting,Minimum-evidence analysis,,existing_export,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/tables/report_ready/ctu_transfer_summary_table.csv,csv,supporting,Synthetic direct transfer to CTU,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/report_ready/ctu_native_feature_path_table.csv,csv,supporting,CTU-native unsupervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/report_ready/ctu_supervised_summary_table.csv,csv,supporting,Within-CTU supervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/ctu13_supervised/ctu_supervised_feature_importance.csv,csv,supporting,Within-CTU supervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/figures/synthetic_detector_comparison.png,png,supporting,Synthetic benchmark evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/minimum_evidence_detection_curve.png,png,supporting,Minimum-evidence analysis,,existing_export,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/ctu_transfer_vs_native_comparison.png,png,supporting,CTU-native unsupervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/ctu13_supervised/ctu_supervised_false_positive_diagnostics.csv,csv,diagnostic,Within-CTU supervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/tables/ctu13_supervised/ctu_supervised_false_negative_diagnostics.csv,csv,diagnostic,Within-CTU supervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
+results/figures/benign_false_positive_by_profile.png,png,diagnostic,Supporting evidence,,existing_export,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/rf_time_size_probability_curve.png,png,diagnostic,Supporting evidence,,existing_export,2026-04-23T17:20:11.083470+00:00,not_applicable
+results/figures/ctu_native_rf_feature_importances.png,png,diagnostic,CTU-native unsupervised evaluation,,existing_export,2026-04-23T17:20:11.083470+00:00,conservative
