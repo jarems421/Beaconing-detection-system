@@ -14,8 +14,8 @@ data. Minimum evidence requirements and schema/domain shift remain the core limi
 
 ## Where To Start
 
-- If you just want the shortest path through the project, stay on `main`, open the live demo, and
-  run one of the included inputs.
+- If you just want the shortest path through the project, stay on `main`, open the [live
+  demo](https://beaconing-detection-system-wwuf.vercel.app), and run one of the included inputs.
 - If you want the cleaner operational implementation history, the `operational-system` branch keeps
   that line of work intact as well.
 - If you want the research story first, jump to the figures and tables in the `Results` section
@@ -45,7 +45,7 @@ data. Minimum evidence requirements and schema/domain shift remain the core limi
 
 The demo is meant to feel guided rather than crowded:
 
-- Live app: `https://beaconing-detection-system-wwuf.vercel.app`
+- Live app: [beaconing-detection-system-wwuf.vercel.app](https://beaconing-detection-system-wwuf.vercel.app)
 - `/` gives the short version of what the system does
 - `/workspace` starts the run
 - `/workspace/results` shows the main finding
@@ -75,10 +75,16 @@ If you want the quick mental model, it is this:
 7. The Next.js workspace lets you read those results one page at a time instead of dumping
    everything onto one screen.
 
-The same flow in one line:
+The same flow in shorthand:
 
 ```text
-input file -> normalize -> group flows -> extract features -> rules + RF scoring -> alerts/report/summary -> workspace pages
+input file
+  -> normalize
+  -> group flows
+  -> extract features
+  -> rules + RF scoring
+  -> alerts, report, summary
+  -> workspace pages
 ```
 
 ## Core Result

@@ -51,8 +51,8 @@
 
   <rect class="panel" x="642" y="270" width="230" height="104" />
   <text class="text" x="674" y="315">Group Flows</text>
-  <text class="body" x="674" y="344">src_ip + dst_ip + dst_port</text>
-  <text class="body" x="674" y="366">+ protocol + direction</text>
+  <text class="body" x="674" y="344">Operational grouping key:</text>
+  <text class="body" x="674" y="366">src, dst, port, proto, dir</text>
 
   <rect class="panel" x="942" y="270" width="230" height="104" />
   <text class="text" x="974" y="315">Extract Features</text>
@@ -71,13 +71,15 @@
   <rect class="panel2" x="542" y="466" width="250" height="116" />
   <text class="text" x="574" y="512">Random Forest</text>
   <text class="body" x="574" y="542">Saved artifact with grouped</text>
-  <text class="body" x="574" y="564">validation-backed thresholds.</text>
+  <text class="body" x="574" y="564">validation profiles.</text>
 
-  <rect class="panel" x="832" y="450" width="360" height="148" />
-  <text class="text" x="864" y="496">Outputs and Demo Pages</text>
-  <text class="body" x="864" y="526">alerts.csv, scored_flows.csv, run_summary.json, report.md</text>
-  <text class="body" x="864" y="552">Workspace pages: Run -> Results -> Explanation -> Diagnostics -> Files</text>
-  <text class="body" x="864" y="578">Same payload shape for included runs and uploaded files.</text>
+  <rect class="panel" x="832" y="438" width="376" height="176" />
+  <text class="text" x="864" y="484">Outputs and Demo Pages</text>
+  <text class="body" x="864" y="514">alerts.csv and scored_flows.csv</text>
+  <text class="body" x="864" y="536">run_summary.json and report.md</text>
+  <text class="body" x="864" y="562">Workspace pages: Run, Results,</text>
+  <text class="body" x="864" y="584">Explanation, Diagnostics, Files</text>
+  <text class="body" x="864" y="610">Same payload shape for sample and upload runs.</text>
 
   <path class="line2" d="M1057 374 L1057 424" />
   <path class="line2" d="M1002 374 C1002 420 377 420 377 466" />
@@ -85,5 +87,6 @@
   <path class="line" d="M502 524 L542 524" />
   <path class="line" d="M792 524 L832 524" />
 
-  <text class="note" x="72" y="654">What this means: the repo is not just a dashboard. It has a real scoring pipeline, real outputs, and a demo that walks a person through the result in stages.</text>
+  <text class="note" x="72" y="660">What this means: the repo is not just a dashboard.</text>
+  <text class="note" x="72" y="686">It includes a real scoring pipeline, real outputs, and a staged demo walkthrough.</text>
 </svg>
